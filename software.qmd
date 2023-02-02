@@ -31,6 +31,10 @@ for data in yaml_data[::-1]:
         buttons.append(button(data['github'], "Github", "bi-github"))
     if "package" in data:
         buttons.append(button(data['package'], "Package", "bi-box-seam"))
+    shift_app = ""
+    if "shift-app" in data:
+        shift_app = '<a href="https://apps.apple.com/us/app/shift-the-app-for-shift-work/id1589005077?itsct=apps_box_badge&amp;itscg=30200" style="display: inline-block; overflow: hidden; border-radius: 13px; width: auto; height: 30px;"><img src="https://tools.applemediaservices.com/api/badges/download-on-the-app-store/black/en-us?size=250x83&amp;releaseDate=1661472000" alt="Download on the App Store" style="border-radius: 13px; width: auto; height: 30px;"></a>'
 
-    display(HTML(" ".join(buttons)))
+    display(HTML(" ".join(buttons) + shift_app))
+    
 ```

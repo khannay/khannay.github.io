@@ -1,139 +1,107 @@
-rl4real:
-    title: "Real-world Video Adaptation with Reinforcement Learning"
+integrate_wearable:
+    title: "Integrating wearable data into circadian models"
     authors:
-        - Hongzi Mao
-        - Shannon Chen
-        - me
-        - Shaun Singh
-        - Drew Blaisdell
-        - Yuandong Tian
-        - Mohammad Alizadeh
-        - Eytan Bakshy
-    year: 2019
-    preprint: https://openreview.net/forum?id=SJlCkwN8iV
-    published_url:
-    venue: ICML Workshop - RL4RealLife
+        - me 
+        - J.P. Moreno 
+    year: 2020
+    published_url: "https://par.nsf.gov/servlets/purl/10267221"
+    venue: Current Opinion in Systems Biology
     github:
-safe_ts:
-  title: "Thompson Sampling for Contextual Bandit Problems with Auxiliary Safety Constraints"
+seasonality:
+  title: "Seasonality and light phase-resetting in the mammalian circadian rhythm"
   authors:
-    - Sam Daulton
-    - Shaun Singh
-    - Vashist Avadhanula
-    - me
-    - Eytan Bakshy
-  year: 2019
-  preprint: https://arxiv.org/abs/1911.00638
-  venue: NeurIPS Workshop - Safety and Robustness in Decision Making
-homog_policy:
-  title: "Experimentation for Homogenous Policy Change"
-  authors:
-    - Molly Offer-Westort
-    - me
-  year: 2021
-  preprint: https://arxiv.org/abs/2101.12318
-calib_hte:
-  title: Calibration of Heterogeneous Treatment Effects in Random Experiments
-  authors:
-    - Yan Leng
-    - me
-  year: 2021
-  preprint: https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3875850
-online_design:
-  title: Online Balanced Experimental Design
-  authors:
-    - David Arbour
-    - me
-    - Tung Mai
-    - Anup Rao
-  published_url: https://proceedings.mlr.press/v162/arbour22a.html
-  venue: ICML
-  year: 2022
-  preprint: https://arxiv.org/abs/2203.02025
-pi0:
-  title: "A search for single photon events in neutrino interactions"
-  authors:
-    - C.T Kullenberg
-    - S.R. Mishra
-    - me
-    - the NOMAD Collaboration
-  published_url: https://doi.org/10.1016/j.physletb.2011.11.049
-  venue: Physics Letters B
-  year: 2012
-dark_money:
-  title: "Shining the Light on Dark Money: Political Spending by Nonprofits"
-  authors:
-    - me
-    - Andrew Peterson
-  year: 2016
-  published_url: https://doi.org/10.7758/RSF.2016.2.7.04
-  venue: "RSF: The Russell Sage Foundation Journal of the Social Sciences"
-exp_eb:
-  title: Shrinkage Estimators in Online Experiments
-  authors:
-    - me
-    - Eytan Bakshy
-    - Jasjeet Sekhon
-  year: 2019
-  venue: KDD
-  preprint: https://arxiv.org/abs/1904.12918
-  published_url: https://doi.org/10.1145/3292500.3330771
-bope:
-  title: Balanced off-policy evaluation in general action spaces
-  authors:
-    - Arjun Sondhi
-    - David Arbour
-    - me
+    - me 
+    - D. Forger 
+    - V. Booth
   year: 2020
-  venue: AISTATS
-  preprint: https://arxiv.org/abs/1906.03694
-  published_url: https://proceedings.mlr.press/v108/sondhi20a.html
-pw:
-  title: Permutation Weighting
+  venue: Scientific Reports
+  published_url: https://www.nature.com/articles/s41598-020-74002-2
+seasonal_obesity:
+  title: "Potential circadian and circannual rhythm contributions to the obesity epidemic in elementary school age children"
   authors:
-    - David Arbour
+    - Jennette P Moreno
+    - Stephanie J Crowley
+    - Candice A Alfano 
     - me
-    - Arjun Sondhi
-  year: 2021
-  venue: ICML
-  preprint: https://arxiv.org/abs/1901.01230
-  published_url: https://proceedings.mlr.press/v139/arbour21a.html
-softblock:
-  title: Efficient Balanced Treatment Assignments for Experimentation
+    - Debbe Thompson 
+    - Tom Baranowski
+  year: 2019
+  venue: International Journal of Behavioral Nutrition and Physical Activity
+  published_url: https://ijbnpa.biomedcentral.com/articles/10.1186/s12966-019-0784-7
+
+macromodels:
+  title: "Macroscopic models for networks of coupled biological oscillators"
   authors:
-    - David Arbour
-    - me
-    - Anup Rao
-  year: 2021
-  venue: AISTATS
-  preprint: https://arxiv.org/abs/2010.11332
-  published_url: https://proceedings.mlr.press/v130/arbour21a.html
-  github: https://github.com/ddimmery/softblock
-gen_exp:
-  title: Designing Transportable Experiments Under S-admissability
+    - me 
+    - D. Forger 
+    - V. Booth
+  year: 2018
+  venue: Science Advances
+  published_url: https://www.science.org/doi/full/10.1126/sciadv.1701047
+
+
+bioinformatics:
+  title: "Buffering by gene duplicates: an analysis of molecular correlates and evolutionary conservation"
   authors:
-    - My Phan
-    - David Arbour
-    - me
-    - Anup Rao
-  year: 2021
-  venue: AISTATS
-  github: https://github.com/myphan9/Designing_Transportable_Experiments
-  preprint: https://arxiv.org/abs/2009.03860
-  published_url: https://proceedings.mlr.press/v130/phan21a.html
-interp_hte:
-  title: "Distilling Heterogeneity: From Explanations of Heterogeneous Treatment Effect Models to Interpretable Policies"
+    - me 
+    - E. Marcotte
+    - C. Vogel 
+  year: 2008
+  venue: BMC Genomics
+  published_url: https://bmcgenomics.biomedcentral.com/articles/10.1186/1471-2164-9-609
+
+cprc:
+  title: "Collective phase response curves for heterogeneous coupled oscillators"
   authors:
-    - Han Wu
-    - Sarah Tan
-    - Weiwei Li
-    - Mia Garrard
-    - Adam Obeng
     - me
-    - Shaun Singh
-    - Hanson Wang
-    - Daniel Jiang
-    - Eytan Bakshy
+    - V. Booth
+    - D. Forger
+  year: 2015
+  venue: Physical Review E
+  published_url: https://link.aps.org/accepted/10.1103/PhysRevE.92.022923
+
+
+mmodel_humans:
+  title: "Macroscopic models for human circadian rhythms"
+  authors:
+    - me
+    - V. Booth
+    - D. Forger
+  year: 2019
+  venue: Journal of Biological Rhythms
+  published_url: https://journals.sagepub.com/doi/pdf/10.1177/0748730419878298
+
+
+mmodel_kids:
+  title: "Estimating circadian phase in elementary school children: leveraging advances in physiologically informed models of circadian entrainment and wearable devices"
+  authors:
+    - Jennette P Moreno
+    - me  
+    - Olivia Walch 
+    - Hafza Dadabhoy 
+    - Jessica Christian 
+    - Maurice Puyau 
+    - Abeer El-Mubasher 
+    - Fida Bacha 
+    - Sarah R Grant, 
+    - Rebekah Julie Park 
+    - Philip Cheng
   year: 2022
-  preprint: https://arxiv.org/abs/2111.03267
-  published_url: https://dl.acm.org/doi/10.1145/3534678.3539175
+  venue: Sleep
+  published_url: https://academic.oup.com/sleep/article/45/6/zsac061/6547079
+
+
+mmodel_obesity:
+  title: "Validation of the Entrainment Signal Regularity Index and associations with children's changes in BMI"
+  authors:
+    - Jennette P Moreno 
+    - me
+    - Amy R Goetz 
+    - Olivia Walch 
+    - Philip Cheng
+  year: 2023
+  venue: Obesity
+  published_url: https://onlinelibrary.wiley.com/doi/abs/10.1002/oby.23641
+
+
+

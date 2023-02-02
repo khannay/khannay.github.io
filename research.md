@@ -10,33 +10,19 @@ keep-md: true
 
 ## Published
 
-### 2021{#published-2021}
+### 2023{#published-2023}
 
 ```{=html}
-<ul class='list-group list-group-flush'><li class='list-group-item'>David Arbour, <strong>Drew Dimmery</strong>, and Arjun Sondhi. (2021) "Permutation Weighting." <em>ICML</em><br><a class="btn btn-outline-dark btn-sm", href="https://arxiv.org/abs/1901.01230" target="_blank" rel="noopener noreferrer">
-        <i class="bi bi-file-earmark-pdf" role='img' aria-label='Preprint'></i>
-        Preprint
-    </a> <a class="btn btn-outline-dark btn-sm", href="https://proceedings.mlr.press/v139/arbour21a.html" target="_blank" rel="noopener noreferrer">
+<ul class='list-group list-group-flush'><li class='list-group-item'>Jennette P Moreno, <strong>Kevin Hannay</strong>, Amy R Goetz, Olivia Walch, and Philip Cheng. (2023) "Validation of the Entrainment Signal Regularity Index and associations with children's changes in BMI." <em>Obesity</em><br><a class="btn btn-outline-dark btn-sm", href="https://onlinelibrary.wiley.com/doi/abs/10.1002/oby.23641" target="_blank" rel="noopener noreferrer">
         <i class="ai ai-archive" role='img' aria-label='Published'></i>
         Published
-    </a></li>
-<li class='list-group-item'>David Arbour, <strong>Drew Dimmery</strong>, and Anup Rao. (2021) "Efficient Balanced Treatment Assignments for Experimentation." <em>AISTATS</em><br><a class="btn btn-outline-dark btn-sm", href="https://arxiv.org/abs/2010.11332" target="_blank" rel="noopener noreferrer">
-        <i class="bi bi-file-earmark-pdf" role='img' aria-label='Preprint'></i>
-        Preprint
-    </a> <a class="btn btn-outline-dark btn-sm", href="https://github.com/ddimmery/softblock" target="_blank" rel="noopener noreferrer">
-        <i class="bi bi-github" role='img' aria-label='Github'></i>
-        Github
-    </a> <a class="btn btn-outline-dark btn-sm", href="https://proceedings.mlr.press/v130/arbour21a.html" target="_blank" rel="noopener noreferrer">
-        <i class="ai ai-archive" role='img' aria-label='Published'></i>
-        Published
-    </a></li>
-<li class='list-group-item'>My Phan, David Arbour, <strong>Drew Dimmery</strong>, and Anup Rao. (2021) "Designing Transportable Experiments Under S-admissability." <em>AISTATS</em><br><a class="btn btn-outline-dark btn-sm", href="https://arxiv.org/abs/2009.03860" target="_blank" rel="noopener noreferrer">
-        <i class="bi bi-file-earmark-pdf" role='img' aria-label='Preprint'></i>
-        Preprint
-    </a> <a class="btn btn-outline-dark btn-sm", href="https://github.com/myphan9/Designing_Transportable_Experiments" target="_blank" rel="noopener noreferrer">
-        <i class="bi bi-github" role='img' aria-label='Github'></i>
-        Github
-    </a> <a class="btn btn-outline-dark btn-sm", href="https://proceedings.mlr.press/v130/phan21a.html" target="_blank" rel="noopener noreferrer">
+    </a></li></ul>
+```
+
+### 2022{#published-2022}
+
+```{=html}
+<ul class='list-group list-group-flush'><li class='list-group-item'>Jennette P Moreno, <strong>Kevin Hannay</strong>, Olivia Walch, Hafza Dadabhoy, Jessica Christian, Maurice Puyau, Abeer El-Mubasher, Fida Bacha, Sarah R Grant,, Rebekah Julie Park, and Philip Cheng. (2022) "Estimating circadian phase in elementary school children: leveraging advances in physiologically informed models of circadian entrainment and wearable devices." <em>Sleep</em><br><a class="btn btn-outline-dark btn-sm", href="https://academic.oup.com/sleep/article/45/6/zsac061/6547079" target="_blank" rel="noopener noreferrer">
         <i class="ai ai-archive" role='img' aria-label='Published'></i>
         Published
     </a></li></ul>
@@ -45,10 +31,11 @@ keep-md: true
 ### 2020{#published-2020}
 
 ```{=html}
-<ul class='list-group list-group-flush'><li class='list-group-item'>Arjun Sondhi, David Arbour, and <strong>Drew Dimmery</strong>. (2020) "Balanced off-policy evaluation in general action spaces." <em>AISTATS</em><br><a class="btn btn-outline-dark btn-sm", href="https://arxiv.org/abs/1906.03694" target="_blank" rel="noopener noreferrer">
-        <i class="bi bi-file-earmark-pdf" role='img' aria-label='Preprint'></i>
-        Preprint
-    </a> <a class="btn btn-outline-dark btn-sm", href="https://proceedings.mlr.press/v108/sondhi20a.html" target="_blank" rel="noopener noreferrer">
+<ul class='list-group list-group-flush'><li class='list-group-item'><strong>Kevin Hannay</strong> and J.P. Moreno. (2020) "Integrating wearable data into circadian models." <em>Current Opinion in Systems Biology</em><br><a class="btn btn-outline-dark btn-sm", href="https://par.nsf.gov/servlets/purl/10267221" target="_blank" rel="noopener noreferrer">
+        <i class="ai ai-archive" role='img' aria-label='Published'></i>
+        Published
+    </a></li>
+<li class='list-group-item'><strong>Kevin Hannay</strong>, D. Forger, and V. Booth. (2020) "Seasonality and light phase-resetting in the mammalian circadian rhythm." <em>Scientific Reports</em><br><a class="btn btn-outline-dark btn-sm", href="https://www.nature.com/articles/s41598-020-74002-2" target="_blank" rel="noopener noreferrer">
         <i class="ai ai-archive" role='img' aria-label='Published'></i>
         Published
     </a></li></ul>
@@ -57,28 +44,38 @@ keep-md: true
 ### 2019{#published-2019}
 
 ```{=html}
-<ul class='list-group list-group-flush'><li class='list-group-item'><strong>Drew Dimmery</strong>, Eytan Bakshy, and Jasjeet Sekhon. (2019) "Shrinkage Estimators in Online Experiments." <em>KDD</em><br><a class="btn btn-outline-dark btn-sm", href="https://arxiv.org/abs/1904.12918" target="_blank" rel="noopener noreferrer">
-        <i class="bi bi-file-earmark-pdf" role='img' aria-label='Preprint'></i>
-        Preprint
-    </a> <a class="btn btn-outline-dark btn-sm", href="https://doi.org/10.1145/3292500.3330771" target="_blank" rel="noopener noreferrer">
+<ul class='list-group list-group-flush'><li class='list-group-item'>Jennette P Moreno, Stephanie J Crowley, Candice A Alfano, <strong>Kevin Hannay</strong>, Debbe Thompson, and Tom Baranowski. (2019) "Potential circadian and circannual rhythm contributions to the obesity epidemic in elementary school age children." <em>International Journal of Behavioral Nutrition and Physical Activity</em><br><a class="btn btn-outline-dark btn-sm", href="https://ijbnpa.biomedcentral.com/articles/10.1186/s12966-019-0784-7" target="_blank" rel="noopener noreferrer">
+        <i class="ai ai-archive" role='img' aria-label='Published'></i>
+        Published
+    </a></li>
+<li class='list-group-item'><strong>Kevin Hannay</strong>, V. Booth, and D. Forger. (2019) "Macroscopic models for human circadian rhythms." <em>Journal of Biological Rhythms</em><br><a class="btn btn-outline-dark btn-sm", href="https://journals.sagepub.com/doi/pdf/10.1177/0748730419878298" target="_blank" rel="noopener noreferrer">
         <i class="ai ai-archive" role='img' aria-label='Published'></i>
         Published
     </a></li></ul>
 ```
 
-### 2016{#published-2016}
+### 2018{#published-2018}
 
 ```{=html}
-<ul class='list-group list-group-flush'><li class='list-group-item'><strong>Drew Dimmery</strong> and Andrew Peterson. (2016) "Shining the Light on Dark Money: Political Spending by Nonprofits." <em>RSF: The Russell Sage Foundation Journal of the Social Sciences</em><br><a class="btn btn-outline-dark btn-sm", href="https://doi.org/10.7758/RSF.2016.2.7.04" target="_blank" rel="noopener noreferrer">
+<ul class='list-group list-group-flush'><li class='list-group-item'><strong>Kevin Hannay</strong>, D. Forger, and V. Booth. (2018) "Macroscopic models for networks of coupled biological oscillators." <em>Science Advances</em><br><a class="btn btn-outline-dark btn-sm", href="https://www.science.org/doi/full/10.1126/sciadv.1701047" target="_blank" rel="noopener noreferrer">
         <i class="ai ai-archive" role='img' aria-label='Published'></i>
         Published
     </a></li></ul>
 ```
 
-### 2012{#published-2012}
+### 2015{#published-2015}
 
 ```{=html}
-<ul class='list-group list-group-flush'><li class='list-group-item'>C.T Kullenberg, S.R. Mishra, <strong>Drew Dimmery</strong>, and the NOMAD Collaboration. (2012) "A search for single photon events in neutrino interactions." <em>Physics Letters B</em><br><a class="btn btn-outline-dark btn-sm", href="https://doi.org/10.1016/j.physletb.2011.11.049" target="_blank" rel="noopener noreferrer">
+<ul class='list-group list-group-flush'><li class='list-group-item'><strong>Kevin Hannay</strong>, V. Booth, and D. Forger. (2015) "Collective phase response curves for heterogeneous coupled oscillators." <em>Physical Review E</em><br><a class="btn btn-outline-dark btn-sm", href="https://link.aps.org/accepted/10.1103/PhysRevE.92.022923" target="_blank" rel="noopener noreferrer">
+        <i class="ai ai-archive" role='img' aria-label='Published'></i>
+        Published
+    </a></li></ul>
+```
+
+### 2008{#published-2008}
+
+```{=html}
+<ul class='list-group list-group-flush'><li class='list-group-item'><strong>Kevin Hannay</strong>, E. Marcotte, and C. Vogel. (2008) "Buffering by gene duplicates: an analysis of molecular correlates and evolutionary conservation." <em>BMC Genomics</em><br><a class="btn btn-outline-dark btn-sm", href="https://bmcgenomics.biomedcentral.com/articles/10.1186/1471-2164-9-609" target="_blank" rel="noopener noreferrer">
         <i class="ai ai-archive" role='img' aria-label='Published'></i>
         Published
     </a></li></ul>
@@ -88,41 +85,5 @@ keep-md: true
 
 ## Working Papers / Non-archival
 
-### 2022{#not-published-2022}
 
-```{=html}
-<ul class='list-group list-group-flush'><li class='list-group-item'>David Arbour, <strong>Drew Dimmery</strong>, Tung Mai, and Anup Rao. (2022) "Online Balanced Experimental Design."<br><a class="btn btn-outline-dark btn-sm", href="https://arxiv.org/abs/2203.02025" target="_blank" rel="noopener noreferrer">
-        <i class="bi bi-file-earmark-pdf" role='img' aria-label='Preprint'></i>
-        Preprint
-    </a></li>
-<li class='list-group-item'>Han Wu, Sarah Tan, Weiwei Li, Mia Garrard, Adam Obeng, <strong>Drew Dimmery</strong>, Shaun Singh, Hanson Wang, Daniel Jiang, and Eytan Bakshy. (2022) "Distilling Heterogeneity: From Explanations of Heterogeneous Treatment Effect Models to Interpretable Policies."<br><a class="btn btn-outline-dark btn-sm", href="https://arxiv.org/abs/2111.03267" target="_blank" rel="noopener noreferrer">
-        <i class="bi bi-file-earmark-pdf" role='img' aria-label='Preprint'></i>
-        Preprint
-    </a></li></ul>
-```
 
-### 2021{#not-published-2021}
-
-```{=html}
-<ul class='list-group list-group-flush'><li class='list-group-item'>Molly Offer-Westort and <strong>Drew Dimmery</strong>. (2021) "Experimentation for Homogenous Policy Change."<br><a class="btn btn-outline-dark btn-sm", href="https://arxiv.org/abs/2101.12318" target="_blank" rel="noopener noreferrer">
-        <i class="bi bi-file-earmark-pdf" role='img' aria-label='Preprint'></i>
-        Preprint
-    </a></li>
-<li class='list-group-item'>Yan Leng and <strong>Drew Dimmery</strong>. (2021) "Calibration of Heterogeneous Treatment Effects in Random Experiments."<br><a class="btn btn-outline-dark btn-sm", href="https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3875850" target="_blank" rel="noopener noreferrer">
-        <i class="bi bi-file-earmark-pdf" role='img' aria-label='Preprint'></i>
-        Preprint
-    </a></li></ul>
-```
-
-### 2019{#not-published-2019}
-
-```{=html}
-<ul class='list-group list-group-flush'><li class='list-group-item'>Hongzi Mao, Shannon Chen, <strong>Drew Dimmery</strong>, Shaun Singh, Drew Blaisdell, Yuandong Tian, Mohammad Alizadeh, and Eytan Bakshy. (2019) "Real-world Video Adaptation with Reinforcement Learning." <em>ICML Workshop - RL4RealLife</em><br><a class="btn btn-outline-dark btn-sm", href="https://openreview.net/forum?id=SJlCkwN8iV" target="_blank" rel="noopener noreferrer">
-        <i class="bi bi-file-earmark-pdf" role='img' aria-label='Preprint'></i>
-        Preprint
-    </a></li>
-<li class='list-group-item'>Sam Daulton, Shaun Singh, Vashist Avadhanula, <strong>Drew Dimmery</strong>, and Eytan Bakshy. (2019) "Thompson Sampling for Contextual Bandit Problems with Auxiliary Safety Constraints." <em>NeurIPS Workshop - Safety and Robustness in Decision Making</em><br><a class="btn btn-outline-dark btn-sm", href="https://arxiv.org/abs/1911.00638" target="_blank" rel="noopener noreferrer">
-        <i class="bi bi-file-earmark-pdf" role='img' aria-label='Preprint'></i>
-        Preprint
-    </a></li></ul>
-```

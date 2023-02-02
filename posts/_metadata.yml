@@ -14,10 +14,8 @@ smooth-scroll: true
 
 # Default author
 author:
-  - name: Drew Dimmery
-    url: https://ddimmery.com
-    affiliation: Data Science @ University of Vienna
-    affiliation-url: https://datascience.univie.ac.at/
+  - name: Kevin Hannay
+    url: https://khannay.com
 
 # citation
 citation: true

@@ -2,39 +2,38 @@
 title: "About"
 ---
 
-I am currently the Scientific Coordinator at the Research Network Data Science at the University of Vienna.
-
 ### Research Interests
 
-- Causal Inference
+- Circadian and Sleep 
+- Blending physiological mathematical models with deep learning
 - Machine Learning
 - Data Science
-- Experimental Design
 
 ### Education
 
 ::: {.d-flex .justify-content-between}
 ::: {}
-**New York University**  
-PhD in Political Methodology  
-Advisors: Cyrus Samii, Neal Beck, Josh Tucker
+**University of Michigan**  
+PhD in Applied and Interdisciplinary Mathematics
+Advisors: Victoria Booth and Danny Forger
 :::
 ::: {.text-end}
-New York, NY  
-Granted May 2016
+Ann Arbor, MI
+Granted May 2017
 :::
 :::
-- Dissertation: *Essays on Causal Inference and Machine Learning with Application to Nonprofits*
-- Winner of 2015 Williams Award for Best Dissertation Proposal in Political Methodology from the Society of Political Methodology
+- Dissertation: *Macroscopic Models and Phase Resetting of Coupled Biological Oscillators*
+- Winner of 2017 Smereka Prize for best dissertation in the department
 
 ::: {.d-flex .justify-content-between}
 ::: {}
-**UNC Chapel Hill**  
-B.A. in International and Area Studies with distinction
+**University of Texas**  
+B.S.(Honors) in Mathematics 
+B.S.(Honors) in Biology
 :::
 ::: {.text-end}
-Chapel Hill, NC  
-Granted June 2010
+Austin, TX
+Granted May 2009
 :::
 :::
 
@@ -42,122 +41,62 @@ Granted June 2010
 
 ::: {.d-flex .justify-content-between}
 ::: {}
-**University of Vienna**  
+**Arcascope**  
 :::
 ::: {.text-end}
-April 2021 - present
+September 2020 - present
 :::
 :::
-*Scientific Coordinator*
+*Chief Technology Officer*
 
-- Supervisor: Philipp Grohs
+- Cofounder and CTO for a mobile health start-up spun out of my academic research. I officially joined the company when awarded a SBIR grant (\$1.6 million) funding the development of an iOS app providing light timing recommendations to treat chronic fatigue in chemotherapy patients. 
+- In my first three months I created and implemented the core algorithms used by the company to predict the users internal circadian phase based on wearable data streams. I created a novel method machine learning technique used for the extraction of weak periodic signals from non-stationary time series to extract estimates from heart rate time-series collected by common wearable devices. I also created the models used to predict uncertainty, combine predictions between approaches and handle chronic missing data. This work formed the basis for the companies core intellectual property and the first patent submitted. 
+- The next six months focused on scaling and moving these algorithms into production to support the clinical trial. I oversaw the companies first developer hires and stepped into a technical management role as we developed the cloud architecture for the clinical trial app based on a microservices design paradigm. I supervised the development of the iOS app and took an active and supervisory role in the back-end development. The clinical trial app was finished three months ahead of schedule and has run for over 100 participants over the last year without any significant outages or bugs while requiring minimal maintenance. 
+- The next three months were focused on customer discovery and algorithm development to support a pivot towards a beachhead market of shift workers. This is a much more challenging technical problem and required the development of a new algorithm for lighting recommendations which accounts for user's constraints. I then acted as a primary developer and project manager for the development of our second iOS app which was moved from first line of code to MVP in three months- more than doubling the development velocity of the first app with the same team.
+- In the next nine months I was heavily involved in pitching investors (30+ times) the shift worker app and ensuring the technology was respondent to the demand signal generated from defense ,healthcare, airline and lighting verticals. In September 2022, Arcascope closed an oversubscribed seed-round of 2.7 million to bring the shift worker app to market. The app was soft launched in the app store in September 2022 and we are currently cultivating B2B partners in the health care sector. 
+- During this time I also developed core machine learning algorithms for the classification of shift work schedules from users wearable data, sleep classification using wearable data streams and hybrid models for blending deep-learning with physiological constraints. I have also helped build the full-stack machine learning pipeline from ETL through model training, and deployment using the AWS stack.  
+
 
 ::: {.d-flex .justify-content-between}
 ::: {}
-**Facebook Core Data Science**  
+**University of Michigan **  
 :::
 ::: {.text-end}
-Sept 2016 - March 2021
+September 2020 - June 2021
 :::
 :::
-*Research Scientist*
+*Visiting Assistant Professor*
 
-- Part of Eytan Bakshy's Adaptive Experimentation team
-- Developed statistical, machine learning and experimental methodology
-- Ran adaptive and contextual field experiments with a variety of product teams
-- Integrated advanced methodologies into a toolkit for scalable and automatic experimentation intended for optimization ([Ax](https://ax.dev/)) - [released at F8 2019](https://developers.facebook.com/videos/2019/product-optimization-with-adaptive-experimentation/))
-- Developed scalable methods for robust observational causal inference as the technical lead of our "CausalML" initiative
+- Conducted research on circadian rhythms and sleep under the supervision of Dr. Danny Forger
+- Developed mathematical models of SNS Pain under the supervision of Dr. Victoria Booth
 
 ::: {.d-flex .justify-content-between}
 ::: {}
-**Princeton University**  
+**Schreiner University**  
 :::
 ::: {.text-end}
-September 2015 - May 2016
+August 2017 - August 2020
 :::
 :::
-*Pre-doctoral fellow*
+*Assistant Professor of Mathematics*
 
-- Supervised by Kosuke Imai
+- Received the 2020 Society for Industrial and Applied Mathematics Young Investigator award for research for research on low-dimensional representations of oscillating systems. 
+- Co-Principal Investigator on National Science Foundation Grant (\$500k) to study mathematical models for circadian and sleep jointly with collaborators at the Colorado School of Mines and the University of Michigan. 
+- Conducted research on blending domain knowledge codified by traditional applied mathematics models and artificial neural networks. Developed a simulation platform for human circadian rhythms and statistical models for the prediction of circadian dynamics using wearable data streams. 
+- Taught mathematics and introductory statistics/data science courses to undergraduate students. Advised the administration on the enrollment and faculty load calculations and data collection pipelines for student retention/churn. 
+- Authored open source textbook on data science and introductory statistics for undergraduate students.
 
 ::: {.d-flex .justify-content-between}
 ::: {}
-**Facebook Core Data Science**  
+**University of Michigan**  
 :::
 ::: {.text-end}
-Summer 2015
+September 2013 - June 2017
 :::
 :::
-*Summer Intern*
+*Graduate student*
 
-- Statistical and Decision Science Team
-- Supervised by Eytan Bakshy
+- Doctoral studies in Applied Mathematics, research in coupled oscillator networks, phase response curves and circadian rhythms. 
+- Completed coursework in applied mathematics, mathematical biology, numerical analysis and high performance computing. 
+- Received the Smereka award for the best doctoral thesis in applied mathematics in 2017 as well as the Society for Industrial and Applied Mathematics (SIAM) Life Sciences young investigator award in 2020. 
 
-### Teaching
-
-#### Facebook
-::: {.d-flex .justify-content-between}
-::: {}
-Internal datacamp class on designing and analyzing experiments 
-:::
-::: {.text-end}
-2017-2019
-:::
-:::
-
-#### NYU Undergraduate
-::: {.d-flex .justify-content-between}
-::: {}
-TA for Power and Politics in America (under Jonathan Nagler)
-:::
-::: {.text-end}
-Fall 2014
-:::
-:::
-
-::: {.d-flex .justify-content-between}
-::: {}
-TA for Games, Strategy and Politics (under Steven Brams)
-:::
-::: {.text-end}
-Fall 2013
-:::
-:::
-
-#### NYU Graduate
-
-::: {.d-flex .justify-content-between}
-::: {}
-TA for Quantitative Methods II (under Nathaniel Beck)
-:::
-::: {.text-end}
-Spring 2015
-:::
-:::
-
-::: {.d-flex .justify-content-between}
-::: {}
-TA for Quantitative Methods II (under Cyrus Samii)
-:::
-::: {.text-end}
-Spring 2014
-:::
-:::
-
-::: {.d-flex .justify-content-between}
-::: {}
-High Performance Computing Talk for NYU Datalab
-:::
-::: {.text-end}
-February 2014
-:::
-:::
-
-::: {.d-flex .justify-content-between}
-::: {}
-Introduction to R for NYU Datalab
-:::
-::: {.text-end}
-January 2013
-:::
-:::

@@ -3,16 +3,16 @@ project:
   output-dir: _site
 
 website:
-  title: "Drew Dimmery"
-  description: "Personal website of Drew Dimmery"
-  site-url: https://ddimmery.com
-  repo-url: https://github.com/ddimmery/quarto-website
-  google-analytics: "G-Y7YLFF5F90"
+  title: "Kevin Hannay"
+  description: "Personal website of Kevin Hannay"
+  site-url: https://khannay.com
+  repo-url: https://github.com/khannay/quarto-website
+  google-analytics: ""
   open-graph: true
   favicon: favicon.png
   twitter-card: 
-    creator: "@drewdim"
-    site: "@drewdim"
+    creator: "@kevin.hannay"
+    site: "@keving.hannay"
     card-style: "summary_large_image"
   navbar:
     background: dark

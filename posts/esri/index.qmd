@@ -1,0 +1,16 @@
+---
+title: "Entrainment Signal Regularity Index: Measuring Circadian Disruption"
+description: |
+    "A summary of the Entrainment Signal Regularity Index (ESRI) and how it can be used to measure circadian disruption."
+date: "2023-02-02"
+categories:
+- circadian
+- data science
+code-fold: true
+#image: /posts/esri/tobias-meme.jpg
+draft: true
+---
+
+# Introduction
+
+Blog post coming soon!
