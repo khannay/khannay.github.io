@@ -2,3 +2,5 @@
 *.RData
 *.rdb
 *.rdx
+/.quarto/
+/_site/
