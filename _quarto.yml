@@ -1,0 +1,38 @@
+project:
+  type: website
+  output-dir: docs
+
+website:
+  title: "Kevin Hannay"
+  description: "Personal website of Kevin Hannay"
+  site-url: https://khannay.com
+  repo-url: https://github.com/khannay/quarto-website
+  google-analytics: ""
+  open-graph: true
+  favicon: favicon.png
+  twitter-card: 
+    creator: "@kevin.hannay"
+    site: "@keving.hannay"
+    card-style: "summary_large_image"
+  navbar:
+    background: dark
+    foreground: light
+    left:
+      - href: index.qmd
+        text: Home
+      - href: about.qmd
+      - href: research.qmd
+      - href: software.qmd
+      - href: blog.qmd
+
+format:
+  html:
+    theme: journal
+    css: styles.css
+    toc: true
+    toc-depth: 4
+    toc-title: "Contents"
+    html-math-method: katex
+    include-in-header:
+      - includes.html
+    highlight-style: tango

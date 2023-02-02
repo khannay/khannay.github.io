@@ -1,0 +1,40 @@
+---
+title: "Software"
+echo: false
+jupyter: python3
+section-divs: false
+---
+
+```{python}
+#| label: "software"
+#| id: "software"
+#| output: asis
+import yaml
+from IPython.display import display, Markdown, HTML
+
+def button(url, str, icon):
+    icon_base = icon[:2]
+    return f"""<a class="btn btn-outline-dark btn-sm", href="{url}" target="_blank" rel="noopener noreferrer">
+        <i class="{icon_base} {icon}" role='img' aria-label='{str}'></i>
+        {str}
+    </a>"""
+
+yaml_data = yaml.safe_load(open("software.yaml"))
+
+for data in yaml_data[::-1]:
+    display(Markdown("## `" + data["title"] + "` {#" + data["title"] + "}"))
+    display(Markdown(data["description"]))
+    buttons = []
+    if "website" in data:
+        buttons.append(button(data['website'], "Website", "bi-info"))
+    if "github" in data:
+        buttons.append(button(data['github'], "Github", "bi-github"))
+    if "package" in data:
+        buttons.append(button(data['package'], "Package", "bi-box-seam"))
+    shift_app = ""
+    if "shift-app" in data:
+        shift_app = '<a href="https://apps.apple.com/us/app/shift-the-app-for-shift-work/id1589005077?itsct=apps_box_badge&amp;itscg=30200" style="display: inline-block; overflow: hidden; border-radius: 13px; width: auto; height: 30px;"><img src="https://tools.applemediaservices.com/api/badges/download-on-the-app-store/black/en-us?size=250x83&amp;releaseDate=1661472000" alt="Download on the App Store" style="border-radius: 13px; width: auto; height: 30px;"></a>'
+
+    display(HTML(" ".join(buttons) + shift_app))
+    
+```

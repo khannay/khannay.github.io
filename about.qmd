@@ -1,0 +1,102 @@
+---
+title: "About"
+---
+
+### Research Interests
+
+- Circadian and Sleep 
+- Blending physiological mathematical models with deep learning
+- Machine Learning
+- Data Science
+
+### Education
+
+::: {.d-flex .justify-content-between}
+::: {}
+**University of Michigan**  
+PhD in Applied and Interdisciplinary Mathematics
+Advisors: Victoria Booth and Danny Forger
+:::
+::: {.text-end}
+Ann Arbor, MI
+Granted May 2017
+:::
+:::
+- Dissertation: *Macroscopic Models and Phase Resetting of Coupled Biological Oscillators*
+- Winner of 2017 Smereka Prize for best dissertation in the department
+
+::: {.d-flex .justify-content-between}
+::: {}
+**University of Texas**  
+B.S.(Honors) in Mathematics 
+B.S.(Honors) in Biology
+:::
+::: {.text-end}
+Austin, TX
+Granted May 2009
+:::
+:::
+
+### Experience
+
+::: {.d-flex .justify-content-between}
+::: {}
+**Arcascope**  
+:::
+::: {.text-end}
+September 2020 - present
+:::
+:::
+*Chief Technology Officer*
+
+- Cofounder and CTO for a mobile health start-up spun out of my academic research. I officially joined the company when awarded a SBIR grant (\$1.6 million) funding the development of an iOS app providing light timing recommendations to treat chronic fatigue in chemotherapy patients. 
+- In my first three months I created and implemented the core algorithms used by the company to predict the users internal circadian phase based on wearable data streams. I created a novel method machine learning technique used for the extraction of weak periodic signals from non-stationary time series to extract estimates from heart rate time-series collected by common wearable devices. I also created the models used to predict uncertainty, combine predictions between approaches and handle chronic missing data. This work formed the basis for the companies core intellectual property and the first patent submitted. 
+- The next six months focused on scaling and moving these algorithms into production to support the clinical trial. I oversaw the companies first developer hires and stepped into a technical management role as we developed the cloud architecture for the clinical trial app based on a microservices design paradigm. I supervised the development of the iOS app and took an active and supervisory role in the back-end development. The clinical trial app was finished three months ahead of schedule and has run for over 100 participants over the last year without any significant outages or bugs while requiring minimal maintenance. 
+- The next three months were focused on customer discovery and algorithm development to support a pivot towards a beachhead market of shift workers. This is a much more challenging technical problem and required the development of a new algorithm for lighting recommendations which accounts for user's constraints. I then acted as a primary developer and project manager for the development of our second iOS app which was moved from first line of code to MVP in three months- more than doubling the development velocity of the first app with the same team.
+- In the next nine months I was heavily involved in pitching investors (30+ times) the shift worker app and ensuring the technology was respondent to the demand signal generated from defense ,healthcare, airline and lighting verticals. In September 2022, Arcascope closed an oversubscribed seed-round of 2.7 million to bring the shift worker app to market. The app was soft launched in the app store in September 2022 and we are currently cultivating B2B partners in the health care sector. 
+- During this time I also developed core machine learning algorithms for the classification of shift work schedules from users wearable data, sleep classification using wearable data streams and hybrid models for blending deep-learning with physiological constraints. I have also helped build the full-stack machine learning pipeline from ETL through model training, and deployment using the AWS stack.  
+
+
+::: {.d-flex .justify-content-between}
+::: {}
+**University of Michigan **  
+:::
+::: {.text-end}
+September 2020 - June 2021
+:::
+:::
+*Visiting Assistant Professor*
+
+- Conducted research on circadian rhythms and sleep under the supervision of Dr. Danny Forger
+- Developed mathematical models of SNS Pain under the supervision of Dr. Victoria Booth
+
+::: {.d-flex .justify-content-between}
+::: {}
+**Schreiner University**  
+:::
+::: {.text-end}
+August 2017 - August 2020
+:::
+:::
+*Assistant Professor of Mathematics*
+
+- Received the 2020 Society for Industrial and Applied Mathematics Young Investigator award for research for research on low-dimensional representations of oscillating systems. 
+- Co-Principal Investigator on National Science Foundation Grant (\$500k) to study mathematical models for circadian and sleep jointly with collaborators at the Colorado School of Mines and the University of Michigan. 
+- Conducted research on blending domain knowledge codified by traditional applied mathematics models and artificial neural networks. Developed a simulation platform for human circadian rhythms and statistical models for the prediction of circadian dynamics using wearable data streams. 
+- Taught mathematics and introductory statistics/data science courses to undergraduate students. Advised the administration on the enrollment and faculty load calculations and data collection pipelines for student retention/churn. 
+- Authored open source textbook on data science and introductory statistics for undergraduate students.
+
+::: {.d-flex .justify-content-between}
+::: {}
+**University of Michigan**  
+:::
+::: {.text-end}
+September 2013 - June 2017
+:::
+:::
+*Graduate student*
+
+- Doctoral studies in Applied Mathematics, research in coupled oscillator networks, phase response curves and circadian rhythms. 
+- Completed coursework in applied mathematics, mathematical biology, numerical analysis and high performance computing. 
+- Received the Smereka award for the best doctoral thesis in applied mathematics in 2017 as well as the Society for Industrial and Applied Mathematics (SIAM) Life Sciences young investigator award in 2020. 
+
