@@ -71,9 +71,9 @@ ul.task-list li input[type="checkbox"] {
     }
 
     const options = {
-      valueNames: ['listing-categories',{ data: ['index'] },{ data: ['categories'] },{ data: ['listing-date-sort'] },{ data: ['listing-file-modified-sort'] }],
+      valueNames: ['listing-date','listing-title','listing-author','listing-image','listing-description','listing-categories',{ data: ['index'] },{ data: ['categories'] },{ data: ['listing-date-sort'] },{ data: ['listing-file-modified-sort'] }],
       
-      searchColumns: ["listing-categories"],
+      searchColumns: ["listing-date","listing-title","listing-author","listing-image","listing-description","listing-categories"],
     };
 
     window['quarto-listings'] = window['quarto-listings'] || {};
@@ -166,7 +166,7 @@ ul.task-list li input[type="checkbox"] {
 <!-- margin-sidebar -->
     <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
         
-    <h5 class="quarto-listing-category-title">Categories</h5><div class="quarto-listing-category category-default"><div class="category" data-category="">All <span class="quarto-category-count">(0)</span></div></div></div>
+    <h5 class="quarto-listing-category-title">Categories</h5><div class="quarto-listing-category category-default"><div class="category" data-category="">All <span class="quarto-category-count">(1)</span></div><div class="category" data-category="circadian">circadian <span class="quarto-category-count">(1)</span></div><div class="category" data-category="data science">data science <span class="quarto-category-count">(1)</span></div></div></div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
@@ -193,7 +193,44 @@ ul.task-list li input[type="checkbox"] {
 
 <div class="quarto-listing quarto-listing-container-default" id="listing-listing">
 <div class="list quarto-listing-default">
+<div class="quarto-post image-right" data-index="0" data-categories="circadian,data science" data-listing-date-sort="1675317600000" data-listing-file-modified-sort="1675374914257" data-listing-reading-time-sort="0.02">
+<div class="thumbnail">
+<p><a href="./posts/esri/index.html"> <img src="./posts/esri/prc.png" class="thumnail-image"> </a></p>
+</div>
+<div class="body">
+<a href="./posts/esri/index.html">
+<h3 class="no-anchor listing-title">
+Entrainment Signal Regularity Index: Measuring Circadian Disruption
+</h3>
+<div class="listing-subtitle">
 
+</div>
+</a>
+<div class="listing-categories">
+<div class="listing-category" onclick="window.quartoListingCategory('circadian'); return false;">
+circadian
+</div>
+<div class="listing-category" onclick="window.quartoListingCategory('data science'); return false;">
+data science
+</div>
+</div>
+<a href="./posts/esri/index.html">
+<div class="listing-description">
+<p>“A summary of the Entrainment Signal Regularity Index (ESRI) and how it can be used to measure circadian disruption.”</p>
+</div>
+</a>
+</div>
+<div class="metadata">
+<a href="./posts/esri/index.html">
+<div class="listing-date">
+Feb 2, 2023
+</div>
+<div class="listing-author">
+Kevin Hannay
+</div>
+</a>
+</div>
+</div>
 </div>
 <div class="listing-no-matching d-none">
 No matching items
