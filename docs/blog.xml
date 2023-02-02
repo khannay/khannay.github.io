@@ -10,6 +10,39 @@
 <atom:link href="https://khannay.com/blog.xml" rel="self" type="application/rss+xml"/>
 <description>Personal website of Kevin Hannay</description>
 <generator>quarto-1.2.313</generator>
-<lastBuildDate>Thu, 02 Feb 2023 20:31:52 GMT</lastBuildDate>
+<lastBuildDate>Thu, 02 Feb 2023 06:00:00 GMT</lastBuildDate>
+<item>
+  <title>Entrainment Signal Regularity Index: Measuring Circadian Disruption</title>
+  <dc:creator>Kevin Hannay</dc:creator>
+  <link>https://khannay.com/posts/esri/index.html</link>
+  <description><![CDATA[ 
+
+
+
+
+<section id="introduction" class="level1">
+<h1>Introduction</h1>
+<p>Blog post coming soon!</p>
+
+
+</section>
+
+<div id="quarto-appendix" class="default"><section class="quarto-appendix-contents"><h2 class="anchored quarto-appendix-heading">Reuse</h2><div quarto-reuse="quarto-reuse" class="quarto-appendix-contents"><a rel="license" href="https://creativecommons.org/licenses/by/4.0/">https://creativecommons.org/licenses/by/4.0/</a></div></section><section class="quarto-appendix-contents"><h2 class="anchored quarto-appendix-heading">Citation</h2><div><div class="quarto-appendix-secondary-label">BibTeX citation:</div><pre class="sourceCode code-with-copy quarto-appendix-bibtex"><code class="sourceCode bibtex">@online{hannay2023,
+  author = {Kevin Hannay},
+  title = {Entrainment {Signal} {Regularity} {Index:} {Measuring}
+    {Circadian} {Disruption}},
+  date = {2023-02-02},
+  url = {https://khannay.com/posts/esri},
+  langid = {en}
+}
+</code></pre><div class="quarto-appendix-secondary-label">For attribution, please cite this work as:</div><div id="ref-hannay2023" class="csl-entry quarto-appendix-citeas">
+Kevin Hannay. 2023. <span>“Entrainment Signal Regularity Index:
+Measuring Circadian Disruption.”</span> February 2, 2023. <a href="https://khannay.com/posts/esri">https://khannay.com/posts/esri</a>.
+</div></div></section></div> ]]></description>
+  <category>circadian</category>
+  <category>data science</category>
+  <guid>https://khannay.com/posts/esri/index.html</guid>
+  <pubDate>Thu, 02 Feb 2023 06:00:00 GMT</pubDate>
+</item>
 </channel>
 </rss>

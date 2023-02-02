@@ -8,7 +8,7 @@ categories:
 - data science
 code-fold: true
 #image: /posts/esri/tobias-meme.jpg
-draft: true
+draft: false
 ---
 
 # Introduction
