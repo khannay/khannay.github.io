@@ -4,10 +4,10 @@ title: "About"
 
 ### Research Interests
 
-- Circadian and Sleep 
-- Blending physiological mathematical models with deep learning
 - Machine Learning
 - Data Science
+- Circadian rhythms and sleep 
+- Blending physiological mathematical models with deep learning
 
 ### Education
 

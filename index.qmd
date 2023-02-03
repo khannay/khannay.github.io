@@ -5,6 +5,8 @@ page-layout: full
 image: /social-card.jpg
 resources:
     - "social-card.jpg"
+    - "headshot.jpg"
+    - "prc.jpg"
 ---
 
 ::: {.column-page-inset}
@@ -15,12 +17,12 @@ Currently, I am the Chief Technology Officer at [Arcascope](https://www.arcascop
 I'm an experienced data scientist, mathematician, technical leader and just general problem solver. My years in academia provided me with a depth of expertise in applied mathematics and scientific computing and a base of knowledge which enables me to quickly get up to speed in new fields. My years of teaching the fundamentals of data science and statistics helped me develop as a technical communicator and become "brilliant in the basics", as we say in the Marine Corps. 
 
 Speaking of which, my years as an active-duty Marine Officer and subsequent service as a reservist have trained me in leadership, organization and planning. More recently, they have also challenged me technically as I moved into the cyberspace field. My experience at Arcascope has challenged me to grow in all these areas. I have learned the fundamental skills of moving code and models into production both hands-on and from a leadership prospective. This has taught me data science pipelining/ ML Ops, AWS cloud architecture, iOS mobile development, DevOps and leading an Agile/SCRUM team of developers. Helping grow Arcascope has been the most satisfying experience of my professional career.
-
 :::
 <div class="column-margin column-container">
 ![](headshot.jpg){.rounded}
 </div>
 :::
+
 
 {{< pagebreak >}}
 
@@ -45,7 +47,7 @@ Speaking of which, my years as an active-duty Marine Officer and subsequent serv
     <i class="ai ai-google-scholar" role='img' aria-label='Google Scholar'></i>
 </a>
 
-<a class="btn btn-outline-dark", href="https://arxiv.org/a/dimmery_d_1.html" target="_blank" rel="noopener noreferrer">
+<a class="btn btn-outline-dark", href="https://arxiv.org/a/hannay_k_1.html" target="_blank" rel="noopener noreferrer">
     <i class="ai ai-arxiv" role='img' aria-label='arXiv'></i>
 </a>
 

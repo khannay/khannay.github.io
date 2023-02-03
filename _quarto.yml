@@ -6,13 +6,13 @@ website:
   title: "Kevin Hannay"
   description: "Personal website of Kevin Hannay"
   site-url: https://khannay.com
-  repo-url: https://github.com/khannay/quarto-website
+  repo-url: https://github.com/khannay/khannay-homepage
   google-analytics: ""
   open-graph: true
   favicon: favicon.png
   twitter-card: 
     creator: "@kevin.hannay"
-    site: "@keving.hannay"
+    site: "@kevin.hannay"
     card-style: "summary_large_image"
   navbar:
     background: dark
@@ -23,6 +23,7 @@ website:
       - href: about.qmd
       - href: research.qmd
       - href: software.qmd
+      - href: cv.qmd
       - href: blog.qmd
 
 format:
