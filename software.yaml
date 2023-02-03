@@ -17,3 +17,15 @@
   website: https://khannay.github.io/paramfittorchdemo/
   github: https://github.com/khannay/paramfittorchdemo
   package: https://pypi.org/project/paramfittorchdemo/
+
+- title: "HannayIntroStats"
+  description: |
+    R package written to accompany my open source textbook on introducing multidiscplinary undergraduates to data science
+  github: https://github.com/khannay/HannayIntroStats
+
+- title: "FittingParamsDiffEqFlux"
+  description: |
+    Tutorial code for how to fit differential equations models using the deep learning library Flux in Julia
+  github: https://github.com/khannay/FittingParamsDiffEqFlux
+
+

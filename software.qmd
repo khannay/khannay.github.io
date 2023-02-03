@@ -21,7 +21,7 @@ def button(url, str, icon):
 
 yaml_data = yaml.safe_load(open("software.yaml"))
 
-for data in yaml_data[::-1]:
+for data in yaml_data:
     display(Markdown("## `" + data["title"] + "` {#" + data["title"] + "}"))
     display(Markdown(data["description"]))
     buttons = []
