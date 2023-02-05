@@ -6,7 +6,7 @@ website:
   title: "Kevin Hannay"
   description: "Personal website of Kevin Hannay"
   site-url: https://khannay.com
-  repo-url: https://github.com/khannay/khannay-homepage
+  repo-url: https://khannay.github.io
   google-analytics: ""
   open-graph: true
   favicon: favicon.png
