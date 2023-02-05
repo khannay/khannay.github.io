@@ -25,7 +25,8 @@ website:
       - href: software.qmd
       - href: cv.qmd
       - href: blog.qmd
-
+resources:
+  - CNAME
 format:
   html:
     theme: journal
