@@ -88,5 +88,6 @@ keep-md: true
 ### 2023{#not-published-2023}
 
 ```{=html}
-<ul class='list-group list-group-flush'><li class='list-group-item'>Caleb Mayer, Olivia Walch, Danny Forger, and Kevin Hannay. (2023) "Impact of light schedules and model parameters on the circadian outcomes of individuals." <em>Under Review</em><br></li></ul>
+<ul class='list-group list-group-flush'><li class='list-group-item'>Caleb Mayer, Olivia Walch, Danny Forger, and <strong>Kevin Hannay</strong>. (2023) "Impact of light schedules and model parameters on the circadian outcomes of individuals." <em>Under Review</em><br></li>
+<li class='list-group-item'><strong>Kevin Hannay</strong>. (2023) "Deep learning from phase response curve data." <em>in prep</em><br></li></ul>
 ```
