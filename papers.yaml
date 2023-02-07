@@ -113,3 +113,10 @@ parameters_cloud:
   year: 2023 
   venue: Under Review
 
+  learn_prc:
+    title: "Deep learning from phase response curve data"
+    authors:
+      - Kevin Hannay
+    year: 2023 
+
+
