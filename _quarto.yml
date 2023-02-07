@@ -24,7 +24,9 @@ website:
       - href: research.qmd
       - href: software.qmd
       - href: cv.qmd
-      - href: blog.qmd
+      - href: blog.qmd 
+      - text: Statistics Book 
+        file: https://khannay.github.io/statsbook
 resources:
   - CNAME
 format:
