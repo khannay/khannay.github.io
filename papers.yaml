@@ -109,14 +109,14 @@ parameters_cloud:
     - Caleb Mayer
     - Olivia Walch
     - Danny Forger
-    - Kevin Hannay
+    - me
   year: 2023 
   venue: Under Review
 
   learn_prc:
     title: "Deep learning from phase response curve data"
     authors:
-      - Kevin Hannay
+      - me
     year: 2023 
     venue: in prep
 
