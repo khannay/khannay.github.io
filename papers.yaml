@@ -103,5 +103,13 @@ mmodel_obesity:
   venue: Obesity
   published_url: https://onlinelibrary.wiley.com/doi/abs/10.1002/oby.23641
 
-
+parameters_cloud:
+  title: "Impact of light schedules and model parameters on the circadian outcomes of individuals"
+  authors:
+    - Caleb Mayer
+    - Olivia Walch
+    - Danny Forger
+    - Kevin Hannay
+  year: 2023 
+  venue: Under Review
 
