@@ -80,7 +80,7 @@ for year in sorted(pub_strs["pubs"].keys(), reverse=True):
     ))
 ```
 
-## Working Papers / Non-archival
+## Working Papers
 
 ```{python}
 #| label: "not-published-year"
