@@ -3,4 +3,4 @@
 *.rdb
 *.rdx
 /.quarto/
-/_site/
+_site/
