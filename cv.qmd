@@ -3,5 +3,5 @@
 {{< include research.md >}}
 
 ---
-title: "Curriculum Vitae"
+title: "Curriculum Vitae: Kevin Hannay"
 ---
