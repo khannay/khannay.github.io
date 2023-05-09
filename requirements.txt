@@ -2,3 +2,4 @@ jupyter
 pyyaml
 torch 
 torchdiffeq
+matplotlib
