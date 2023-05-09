@@ -1,4 +1,4 @@
 jupyter
 pyyaml
 torch 
-torchodeint 
+torchdiffeq
