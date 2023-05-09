@@ -2,6 +2,7 @@
   {
     "listing": "/blog.html",
     "items": [
+      "/posts/pytorch-ode/ode.html",
       "/posts/esri/index.html"
     ]
   }

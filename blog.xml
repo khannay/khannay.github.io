@@ -9,8 +9,2799 @@
 <link>https://khannay.com/blog.html</link>
 <atom:link href="https://khannay.com/blog.xml" rel="self" type="application/rss+xml"/>
 <description>Personal website of Kevin Hannay</description>
-<generator>quarto-1.2.475</generator>
-<lastBuildDate>Thu, 02 Feb 2023 00:00:00 GMT</lastBuildDate>
+<generator>quarto-1.3.340</generator>
+<lastBuildDate>Sat, 08 Apr 2023 00:00:00 GMT</lastBuildDate>
+<item>
+  <title>Differential Equations as a Pytorch Neural Network Layer</title>
+  <dc:creator>Kevin Hannay</dc:creator>
+  <link>https://khannay.com/posts/pytorch-ode/ode.html</link>
+  <description><![CDATA[ 
+
+
+
+
+<p><a href="https://colab.research.google.com/github/khannay/paramfittorchdemo/blob/main/nbs/00_training.ipynb" target="_parent"><img src="https://khannay.com/posts/pytorch-ode/https:/colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"></a></p>
+<blockquote class="blockquote">
+<p>How to use differential equations layers in pytorch</p>
+</blockquote>
+<p>Differential equations are the mathematical foundation for most of modern science. They describe the state of a system using an equation for the rate of change (differential). It is remarkable how many systems can be well described by equations of this form. For example, the physical laws describing motion, electromagnetism and quantum mechanics all take this form. More broadly, differential equations describe chemical reaction rates through the law of mass action, neuronal firing and disease spread through the SIR model.</p>
+<p>The deep learning revolution has brought with it a new set of tools for performing large scale optimizations over enormous datasets. In this post, we will see how you can use these tools to fit the parameters of a custom differential equation layer in pytorch.</p>
+<a href="https://imgflip.com/i/7iqu3n"><img src="https://khannay.com/posts/pytorch-ode/https:/i.imgflip.com/7iqu3n.jpg" title="made at imgflip.com"></a>
+<div>
+<a href="https://imgflip.com/memegenerator">from Imgflip Meme Generator</a>
+</div>
+<section id="what-is-the-problem-we-are-trying-to-solve" class="level2">
+<h2 class="anchored" data-anchor-id="what-is-the-problem-we-are-trying-to-solve">What is the problem we are trying to solve?</h2>
+<p>Let’s say we have some time series data y(t) that we want to model with a differential equation. The data takes the form of a set of observations yᵢ at times tᵢ. Based on some domain knowledge of the underlying system we can write down a differential equation to approximate the system.</p>
+<p>In the most general form this takes the form:</p>
+<p><img src="https://latex.codecogs.com/png.latex?%5Cbegin%7Balign%7D%0A%5Cfrac%7Bdy%7D%7Bdt%7D%20=%20f(y,t;%5Ctheta)%20%20%5C%5C%0Ay(t_0)%20=%20y_0%0A%5Cend%7Balign%7D"></p>
+<p>where <img src="https://latex.codecogs.com/png.latex?y"> is the state of the system, <img src="https://latex.codecogs.com/png.latex?t"> is time, and <img src="https://latex.codecogs.com/png.latex?%5Ctheta"> are the parameters of the model. In this post we will assume that the parameters <img src="https://latex.codecogs.com/png.latex?%5Ctheta"> are unknown and we want to learn them from the data.</p>
+<p>Let’s import the libraries we will need for this post. The only non standard machine learning library we will use the <a href="https://github.com/rtqichen/torchdiffeq"> torchdiffeq </a> library to solve the differential equations. This library implements numerical differential equation solvers in pytorch.</p>
+<div class="cell" data-execution_count="1">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb1" style="background: #f1f3f5;"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><span class="im" style="color: #00769E;
+background-color: null;
+font-style: inherit;">import</span> torch </span>
+<span id="cb1-2"><span class="im" style="color: #00769E;
+background-color: null;
+font-style: inherit;">import</span> torch.nn <span class="im" style="color: #00769E;
+background-color: null;
+font-style: inherit;">as</span> nn</span>
+<span id="cb1-3"><span class="im" style="color: #00769E;
+background-color: null;
+font-style: inherit;">from</span> torchdiffeq <span class="im" style="color: #00769E;
+background-color: null;
+font-style: inherit;">import</span> odeint <span class="im" style="color: #00769E;
+background-color: null;
+font-style: inherit;">as</span> odeint</span>
+<span id="cb1-4"><span class="im" style="color: #00769E;
+background-color: null;
+font-style: inherit;">import</span> pylab <span class="im" style="color: #00769E;
+background-color: null;
+font-style: inherit;">as</span> plt</span>
+<span id="cb1-5"><span class="im" style="color: #00769E;
+background-color: null;
+font-style: inherit;">from</span> torch.utils.data <span class="im" style="color: #00769E;
+background-color: null;
+font-style: inherit;">import</span> Dataset, DataLoader</span>
+<span id="cb1-6"><span class="im" style="color: #00769E;
+background-color: null;
+font-style: inherit;">from</span> typing <span class="im" style="color: #00769E;
+background-color: null;
+font-style: inherit;">import</span> Callable, List, Tuple, Union, Optional</span>
+<span id="cb1-7"><span class="im" style="color: #00769E;
+background-color: null;
+font-style: inherit;">from</span> pathlib <span class="im" style="color: #00769E;
+background-color: null;
+font-style: inherit;">import</span> Path  </span></code></pre></div>
+</details>
+</div>
+<div class="cell" data-execution_count="2">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb2" style="background: #f1f3f5;"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><span class="cf" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">if</span> torch.cuda.is_available():</span>
+<span id="cb2-2">    device <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> torch.device(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'cuda'</span>)</span>
+<span id="cb2-3"><span class="cf" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">else</span>:</span>
+<span id="cb2-4">    device <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> torch.device(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'cpu'</span>)</span></code></pre></div>
+</details>
+</div>
+</section>
+<section id="models" class="level2">
+<h2 class="anchored" data-anchor-id="models">Models</h2>
+<p>The first step of our modeling process is to define the model. For differential equations this means we must choose a form for the function <img src="https://latex.codecogs.com/png.latex?f(y,t;%5Ctheta)"> and a way to represent the parameters <img src="https://latex.codecogs.com/png.latex?%5Ctheta">. We also need to do this in a way that is compatible with pytorch.</p>
+<p>This means we need to encode our function as a torch.nn.Module class. As you will see this is pretty easy and only requires defining two methods. Lets get started with the first of out three example models.</p>
+<section id="van-der-pol-oscillator-vdp" class="level3">
+<h3 class="anchored" data-anchor-id="van-der-pol-oscillator-vdp">van Der Pol Oscillator (VDP)</h3>
+<p>We can define a differential equation system using the <i> torch.nn.Module </i> class where the parameters are created using the <i> torch.nn.Parameter </i> declaration. This lets pytorch know that we want to accumulate gradients for those parameters. We can also include fixed parameters (don’t want to fit these) by just not wrapping them with this declaration.</p>
+<p>The first example we will use is the classic VDP oscillator which is a nonlinear oscillator with a single parameter <img src="https://latex.codecogs.com/png.latex?%5Cmu">. The differential equations for this system are:</p>
+<p><img src="https://latex.codecogs.com/png.latex?%5Cbegin%7Balign%7D%0A%5Cfrac%7BdX%7D%7Bdt%7D%20&amp;=%20%5Cmu(x-%5Cfrac%7B1%7D%7B3%7Dx%5E3-y)%20%20%5C%5C%0A%5Cfrac%7BdY%7D%7Bdt%7D%20&amp;=%20%5Cfrac%7Bx%7D%7B%5Cmu%7D%20%20%5C%5C%0A%5Cend%7Balign%7D"></p>
+<p>where <img src="https://latex.codecogs.com/png.latex?X"> and <img src="https://latex.codecogs.com/png.latex?Y"> are the state variables. The VDP model is used to model everything from electronic circuits to cardiac arrhythmias and circadian rhythms. We can define this system in pytorch as follows:</p>
+<div class="cell" data-execution_count="3">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb3" style="background: #f1f3f5;"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><span class="kw" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">class</span> VDP(nn.Module):</span>
+<span id="cb3-2">    <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">""" </span></span>
+<span id="cb3-3"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">    Define the Van der Pol oscillator as a PyTorch module.</span></span>
+<span id="cb3-4"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">    """</span></span>
+<span id="cb3-5">    <span class="kw" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">def</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">__init__</span>(<span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">self</span>, </span>
+<span id="cb3-6">                 mu: <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">float</span>, <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># Stiffness parameter of the VDP oscillator</span></span>
+<span id="cb3-7">                 ):</span>
+<span id="cb3-8">        <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">super</span>().<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">__init__</span>() </span>
+<span id="cb3-9">        <span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">self</span>.mu <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> torch.nn.Parameter(torch.tensor(mu)) <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># make mu a learnable parameter</span></span>
+<span id="cb3-10">        </span>
+<span id="cb3-11">    <span class="kw" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">def</span> forward(<span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">self</span>, </span>
+<span id="cb3-12">                t: <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">float</span>, <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># time index</span></span>
+<span id="cb3-13">                state: torch.TensorType, <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># state of the system first dimension is the batch size</span></span>
+<span id="cb3-14">                ) <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-&gt;</span> torch.Tensor: <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># return the derivative of the state</span></span>
+<span id="cb3-15">        <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">""" </span></span>
+<span id="cb3-16"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">            Define the right hand side of the VDP oscillator.</span></span>
+<span id="cb3-17"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">        """</span></span>
+<span id="cb3-18">        x <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> state[..., <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>] <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># first dimension is the batch size</span></span>
+<span id="cb3-19">        y <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> state[..., <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>]</span>
+<span id="cb3-20">        dX <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">self</span>.mu<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span>(x<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">3</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span>x<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">**</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">3</span> <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span> y)</span>
+<span id="cb3-21">        dY <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/</span><span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">self</span>.mu<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span>x</span>
+<span id="cb3-22">        <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># trick to make sure our return value has the same shape as the input</span></span>
+<span id="cb3-23">        dfunc <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> torch.zeros_like(state) </span>
+<span id="cb3-24">        dfunc[..., <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>] <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> dX</span>
+<span id="cb3-25">        dfunc[..., <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>] <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> dY</span>
+<span id="cb3-26">        <span class="cf" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">return</span> dfunc</span>
+<span id="cb3-27">    </span>
+<span id="cb3-28">    <span class="kw" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">def</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">__repr__</span>(<span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">self</span>):</span>
+<span id="cb3-29">        <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">"""Print the parameters of the model."""</span></span>
+<span id="cb3-30">        <span class="cf" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">return</span> <span class="ss" style="color: #20794D;
+background-color: null;
+font-style: inherit;">f" mu: </span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">{</span><span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">self</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span>mu<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span>item()<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">}</span><span class="ss" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"</span></span></code></pre></div>
+</details>
+</div>
+<p>You only need to define the dunder init method (<strong>init</strong>) and the forward method. I added a string method <strong>repr</strong> to pretty print the parameter. The key point here is how we can translate from the differential equation to torch code in the forward method. This method needs to define the right-hand side of the differential equation.</p>
+<p>Let’s see how we can integrate this model using the odeint method from torchdiffeq:</p>
+<div class="cell" data-execution_count="4">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb4" style="background: #f1f3f5;"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1">vdp_model <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> VDP(mu<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.5</span>)</span>
+<span id="cb4-2"></span>
+<span id="cb4-3"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># Create a time vector, this is the time axis of the ODE</span></span>
+<span id="cb4-4">ts <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> torch.linspace(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>,<span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">30.0</span>,<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1000</span>)</span>
+<span id="cb4-5"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># Create a batch of initial conditions </span></span>
+<span id="cb4-6">batch_size <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">30</span></span>
+<span id="cb4-7"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># Creates some random initial conditions</span></span>
+<span id="cb4-8">initial_conditions <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> torch.tensor([<span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.01</span>, <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.01</span>]) <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.2</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span>torch.randn((batch_size,<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span>))</span>
+<span id="cb4-9"></span>
+<span id="cb4-10"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># Solve the ODE, odeint comes from torchdiffeq</span></span>
+<span id="cb4-11">sol <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> odeint(vdp_model, initial_conditions, ts, method<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'dopri5'</span>).detach().numpy()</span></code></pre></div>
+</details>
+</div>
+<div class="cell" data-execution_count="5">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb5" style="background: #f1f3f5;"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1">plt.plot(ts, sol[:,:,<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>], lw<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.5</span>)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb5-2">plt.title(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Time series of the VDP oscillator"</span>)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb5-3">plt.xlabel(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"time"</span>)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb5-4">plt.ylabel(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"x"</span>)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span></code></pre></div>
+</details>
+<div class="cell-output cell-output-display">
+<p><img src="https://khannay.com/posts/pytorch-ode/ode_files/figure-html/cell-6-output-1.png" width="600" height="449"></p>
+</div>
+</div>
+<p>Here is a phase plane plot of the solution (a phase plane plot of a parametric plot of the dynamical state).</p>
+<div class="cell" data-execution_count="6">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb6" style="background: #f1f3f5;"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># Check the solution</span></span>
+<span id="cb6-2">plt.plot(sol[:,:,<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>], sol[:,:,<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>], lw<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.5</span>)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb6-3">plt.title(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Phase plot of the VDP oscillator"</span>)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb6-4">plt.xlabel(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"x"</span>)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb6-5">plt.ylabel(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"y"</span>)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span></code></pre></div>
+</details>
+<div class="cell-output cell-output-display">
+<p><img src="https://khannay.com/posts/pytorch-ode/ode_files/figure-html/cell-7-output-1.png" width="587" height="449"></p>
+</div>
+</div>
+<p>The colors indicate the 30 seperate trajectories in our batch. The solution comes back as a torch tensor with dimensions (time_points, batch number, dynamical_dimension).</p>
+<div class="cell" data-execution_count="7">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb7" style="background: #f1f3f5;"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1">sol.shape</span></code></pre></div>
+</details>
+<div class="cell-output cell-output-display" data-execution_count="7">
+<pre><code>(1000, 30, 2)</code></pre>
+</div>
+</div>
+</section>
+<section id="lotka-volterra-predator-prey-equations" class="level3">
+<h3 class="anchored" data-anchor-id="lotka-volterra-predator-prey-equations">Lotka Volterra Predator Prey equations</h3>
+<p>As another example we create a module for the Lotka Volterra predator-prey equations. In the Lotka-Volterra (LV) predator-prey model, there are two primary variables: the population of prey (<img src="https://latex.codecogs.com/png.latex?x">) and the population of predators (<img src="https://latex.codecogs.com/png.latex?y">). The model is defined by the following equations:</p>
+<p><img src="https://latex.codecogs.com/png.latex?%5Cbegin%7Balign%7D%0A%5Cfrac%7Bdx%7D%7Bdt%7D%20&amp;=%20%5Calpha%20x%20-%20%5Cbeta%20xy%20%5C%5C%0A%5Cfrac%7Bdy%7D%7Bdt%7D%20&amp;=%20-%5Cdelta%20y%20+%20%5Cgamma%20xy%20%5C%5C%0A%5Cend%7Balign%7D"></p>
+<p>The population of prey (<img src="https://latex.codecogs.com/png.latex?x">) represents the number of individuals of the prey species present in the ecosystem at any given time. The population of predators (<img src="https://latex.codecogs.com/png.latex?y">) represents the number of individuals of the predator species present in the ecosystem at any given time.</p>
+<p>In addition to the primary variables, there are also four parameters that are used to describe various ecological factors in the model:</p>
+<p><img src="https://latex.codecogs.com/png.latex?%5Calpha"> represents the intrinsic growth rate of the prey population in the absence of predators. <img src="https://latex.codecogs.com/png.latex?%5Cbeta"> represents the predation rate of the predators on the prey. <img src="https://latex.codecogs.com/png.latex?%5Cgamma"> represents the death rate of the predator population in the absence of prey. <img src="https://latex.codecogs.com/png.latex?%5Cdelta"> represents the efficiency with which the predators convert the consumed prey into new predator biomass.</p>
+<p>Together, these variables and parameters describe the dynamics of predator-prey interactions in an ecosystem and are used to mathematically model the changes in the populations of prey and predators over time.</p>
+<div class="cell" data-execution_count="8">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb9" style="background: #f1f3f5;"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><span class="kw" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">class</span> LotkaVolterra(nn.Module):</span>
+<span id="cb9-2">    <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">""" </span></span>
+<span id="cb9-3"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">     The Lotka-Volterra equations are a pair of first-order, non-linear, differential equations</span></span>
+<span id="cb9-4"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">     describing the dynamics of two species interacting in a predator-prey relationship.</span></span>
+<span id="cb9-5"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">    """</span></span>
+<span id="cb9-6">    <span class="kw" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">def</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">__init__</span>(<span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">self</span>,</span>
+<span id="cb9-7">                 alpha: <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">float</span> <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1.5</span>, <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># The alpha parameter of the Lotka-Volterra system</span></span>
+<span id="cb9-8">                 beta: <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">float</span> <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1.0</span>, <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># The beta parameter of the Lotka-Volterra system</span></span>
+<span id="cb9-9">                 delta: <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">float</span> <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">3.0</span>, <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># The delta parameter of the Lotka-Volterra system</span></span>
+<span id="cb9-10">                 gamma: <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">float</span> <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1.0</span> <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># The gamma parameter of the Lotka-Volterra system</span></span>
+<span id="cb9-11">                 ) <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-&gt;</span> <span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">None</span>:</span>
+<span id="cb9-12">        <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">super</span>().<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">__init__</span>()</span>
+<span id="cb9-13">        <span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">self</span>.model_params <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> torch.nn.Parameter(torch.tensor([alpha, beta, delta, gamma]))</span>
+<span id="cb9-14">        </span>
+<span id="cb9-15">        </span>
+<span id="cb9-16">    <span class="kw" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">def</span> forward(<span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">self</span>, t, state):</span>
+<span id="cb9-17">        x <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> state[...,<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>]      <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#variables are part of vector array u </span></span>
+<span id="cb9-18">        y <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> state[...,<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>]</span>
+<span id="cb9-19">        sol <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> torch.zeros_like(state)</span>
+<span id="cb9-20">        </span>
+<span id="cb9-21">        <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#coefficients are part of tensor model_params</span></span>
+<span id="cb9-22">        alpha, beta, delta, gamma <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">self</span>.model_params    </span>
+<span id="cb9-23">        sol[...,<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>] <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> alpha<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span>x <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span> beta<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span>x<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span>y</span>
+<span id="cb9-24">        sol[...,<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>] <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span>delta<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span>y <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> gamma<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span>x<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span>y</span>
+<span id="cb9-25">        <span class="cf" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">return</span> sol</span>
+<span id="cb9-26">    </span>
+<span id="cb9-27">    <span class="kw" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">def</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">__repr__</span>(<span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">self</span>):</span>
+<span id="cb9-28">        <span class="cf" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">return</span> <span class="ss" style="color: #20794D;
+background-color: null;
+font-style: inherit;">f" alpha: </span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">{</span><span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">self</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span>model_params[<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>]<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span>item()<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">}</span><span class="ss" style="color: #20794D;
+background-color: null;
+font-style: inherit;">, </span><span class="ch" style="color: #20794D;
+background-color: null;
+font-style: inherit;">\</span></span>
+<span id="cb9-29"><span class="ss" style="color: #20794D;
+background-color: null;
+font-style: inherit;">            beta: </span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">{</span><span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">self</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span>model_params[<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>]<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span>item()<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">}</span><span class="ss" style="color: #20794D;
+background-color: null;
+font-style: inherit;">, </span><span class="ch" style="color: #20794D;
+background-color: null;
+font-style: inherit;">\</span></span>
+<span id="cb9-30"><span class="ss" style="color: #20794D;
+background-color: null;
+font-style: inherit;">                delta: </span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">{</span><span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">self</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span>model_params[<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span>]<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span>item()<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">}</span><span class="ss" style="color: #20794D;
+background-color: null;
+font-style: inherit;">, </span><span class="ch" style="color: #20794D;
+background-color: null;
+font-style: inherit;">\</span></span>
+<span id="cb9-31"><span class="ss" style="color: #20794D;
+background-color: null;
+font-style: inherit;">                    gamma: </span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">{</span><span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">self</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span>model_params[<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">3</span>]<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span>item()<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">}</span><span class="ss" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"</span></span></code></pre></div>
+</details>
+</div>
+<p>This follows the same pattern as the first example, the main difference is that we now have four parameters and store them as a model_params tensor. Here is the integration and plotting code for the predator-prey equations.</p>
+<div class="cell" data-execution_count="9">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb10" style="background: #f1f3f5;"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1">lv_model <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> LotkaVolterra() <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#use default parameters</span></span>
+<span id="cb10-2">ts <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> torch.linspace(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>,<span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">30.0</span>,<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1000</span>) </span>
+<span id="cb10-3">batch_size <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">30</span></span>
+<span id="cb10-4"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># Create a batch of initial conditions (batch_dim, state_dim) as small perturbations around one value</span></span>
+<span id="cb10-5">initial_conditions <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> torch.tensor([[<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">3</span>,<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">3</span>]]) <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.50</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span>torch.randn((batch_size,<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span>))</span>
+<span id="cb10-6">sol <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> odeint(lv_model, initial_conditions, ts, method<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'dopri5'</span>).detach().numpy()</span>
+<span id="cb10-7"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># Check the solution</span></span>
+<span id="cb10-8"></span>
+<span id="cb10-9">plt.plot(ts, sol[:,:,<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>], lw<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.5</span>)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb10-10">plt.title(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Time series of the Lotka-Volterra system"</span>)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb10-11">plt.xlabel(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"time"</span>)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb10-12">plt.ylabel(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"x"</span>)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span></code></pre></div>
+</details>
+<div class="cell-output cell-output-display">
+<p><img src="https://khannay.com/posts/pytorch-ode/ode_files/figure-html/cell-10-output-1.png" width="576" height="449"></p>
+</div>
+</div>
+<p>Now a phase plane plot of the system:</p>
+<div class="cell" data-execution_count="10">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb11" style="background: #f1f3f5;"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1">plt.plot(sol[:,:,<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>], sol[:,:,<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>], lw<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.5</span>)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb11-2">plt.title(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Phase plot of the Lotka-Volterra system"</span>)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb11-3">plt.xlabel(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"x"</span>)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb11-4">plt.ylabel(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"y"</span>)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span></code></pre></div>
+</details>
+<div class="cell-output cell-output-display">
+<p><img src="https://khannay.com/posts/pytorch-ode/ode_files/figure-html/cell-11-output-1.png" width="589" height="449"></p>
+</div>
+</div>
+</section>
+<section id="lorenz-system" class="level3">
+<h3 class="anchored" data-anchor-id="lorenz-system">Lorenz system</h3>
+<p>The last example we will use is the Lorenz equations which are famous for their beatiful plots illustrating chaotic dynamics. They originally came from a reduced model for fluid dynamics and take the form:</p>
+<p><img src="https://latex.codecogs.com/png.latex?%5Cbegin%7Balign%7D%0A%5Cfrac%7Bdx%7D%7Bdt%7D%20&amp;=%20%5Csigma(y%20-%20x)%20%5C%5C%0A%5Cfrac%7Bdy%7D%7Bdt%7D%20&amp;=%20x(%5Crho%20-%20z)%20-%20y%20%5C%5C%0A%5Cfrac%7Bdz%7D%7Bdt%7D%20&amp;=%20xy%20-%20%5Cbeta%20z%0A%5Cend%7Balign%7D"></p>
+<p>where <img src="https://latex.codecogs.com/png.latex?x">, <img src="https://latex.codecogs.com/png.latex?y">, and <img src="https://latex.codecogs.com/png.latex?z"> are the state variables, and <img src="https://latex.codecogs.com/png.latex?%5Csigma">, <img src="https://latex.codecogs.com/png.latex?%5Crho">, and <img src="https://latex.codecogs.com/png.latex?%5Cbeta"> are the system parameters.</p>
+<div class="cell" data-execution_count="11">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb12" style="background: #f1f3f5;"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><span class="kw" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">class</span> Lorenz(nn.Module):</span>
+<span id="cb12-2">    <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">""" </span></span>
+<span id="cb12-3"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">    Define the Lorenz system as a PyTorch module.</span></span>
+<span id="cb12-4"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">    """</span></span>
+<span id="cb12-5">    <span class="kw" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">def</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">__init__</span>(<span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">self</span>, </span>
+<span id="cb12-6">                 sigma: <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">float</span> <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">10.0</span>, <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># The sigma parameter of the Lorenz system</span></span>
+<span id="cb12-7">                 rho: <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">float</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">28.0</span>, <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># The rho parameter of the Lorenz system</span></span>
+<span id="cb12-8">                beta: <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">float</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">8.0</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">3</span>, <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># The beta parameter of the Lorenz system</span></span>
+<span id="cb12-9">                ):</span>
+<span id="cb12-10">        <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">super</span>().<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">__init__</span>() </span>
+<span id="cb12-11">        <span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">self</span>.model_params <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> torch.nn.Parameter(torch.tensor([sigma, rho, beta]))</span>
+<span id="cb12-12">        </span>
+<span id="cb12-13">        </span>
+<span id="cb12-14">    <span class="kw" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">def</span> forward(<span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">self</span>, t, state):</span>
+<span id="cb12-15">        x <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> state[...,<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>]      <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#variables are part of vector array u </span></span>
+<span id="cb12-16">        y <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> state[...,<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>]</span>
+<span id="cb12-17">        z <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> state[...,<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span>]</span>
+<span id="cb12-18">        sol <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> torch.zeros_like(state)</span>
+<span id="cb12-19">        </span>
+<span id="cb12-20">        sigma, rho, beta <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">self</span>.model_params    <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#coefficients are part of vector array p</span></span>
+<span id="cb12-21">        sol[...,<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>] <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> sigma<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span>(y<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span>x)</span>
+<span id="cb12-22">        sol[...,<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>] <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> x<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span>(rho<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span>z) <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span> y</span>
+<span id="cb12-23">        sol[...,<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span>] <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> x<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span>y <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span> beta<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span>z</span>
+<span id="cb12-24">        <span class="cf" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">return</span> sol</span>
+<span id="cb12-25">    </span>
+<span id="cb12-26">    <span class="kw" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">def</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">__repr__</span>(<span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">self</span>):</span>
+<span id="cb12-27">        <span class="cf" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">return</span> <span class="ss" style="color: #20794D;
+background-color: null;
+font-style: inherit;">f" sigma: </span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">{</span><span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">self</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span>model_params[<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>]<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span>item()<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">}</span><span class="ss" style="color: #20794D;
+background-color: null;
+font-style: inherit;">, </span><span class="ch" style="color: #20794D;
+background-color: null;
+font-style: inherit;">\</span></span>
+<span id="cb12-28"><span class="ss" style="color: #20794D;
+background-color: null;
+font-style: inherit;">            rho: </span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">{</span><span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">self</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span>model_params[<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>]<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span>item()<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">}</span><span class="ss" style="color: #20794D;
+background-color: null;
+font-style: inherit;">, </span><span class="ch" style="color: #20794D;
+background-color: null;
+font-style: inherit;">\</span></span>
+<span id="cb12-29"><span class="ss" style="color: #20794D;
+background-color: null;
+font-style: inherit;">                beta: </span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">{</span><span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">self</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span>model_params[<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span>]<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span>item()<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">}</span><span class="ss" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"</span></span></code></pre></div>
+</details>
+</div>
+<p>This shows how to integrate this system and plot the results. This system (at these parameter values) shows chaotic dynamics so initial conditions that start off close together diverge from one another exponentially.</p>
+<div class="cell" data-execution_count="12">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb13" style="background: #f1f3f5;"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1">lorenz_model <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> Lorenz()</span>
+<span id="cb13-2">ts <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> torch.linspace(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>,<span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">50.0</span>,<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">3000</span>)</span>
+<span id="cb13-3">batch_size <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">30</span></span>
+<span id="cb13-4"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># Create a batch of initial conditions (batch_dim, state_dim) as small perturbations around one value</span></span>
+<span id="cb13-5">initial_conditions <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> torch.tensor([[<span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1.0</span>,<span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.0</span>,<span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.0</span>]]) <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.10</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span>torch.randn((batch_size,<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">3</span>))</span>
+<span id="cb13-6">sol <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> odeint(lorenz_model, initial_conditions, ts, method<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'dopri5'</span>).detach().numpy()</span>
+<span id="cb13-7"></span>
+<span id="cb13-8"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># Check the solution</span></span>
+<span id="cb13-9">plt.plot(ts[:<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2000</span>], sol[:<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2000</span>,:,<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>], lw<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.5</span>)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb13-10">plt.title(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Time series of the Lorenz system"</span>)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb13-11">plt.xlabel(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"time"</span>)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb13-12">plt.ylabel(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"x"</span>)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span></code></pre></div>
+</details>
+<div class="cell-output cell-output-display">
+<p><img src="https://khannay.com/posts/pytorch-ode/ode_files/figure-html/cell-13-output-1.png" width="596" height="449"></p>
+</div>
+</div>
+<p>Here we show the famous butterfly plot (phase plane plot) for the first set of initial conditions in the batch.</p>
+<div class="cell" data-execution_count="13">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb14" style="background: #f1f3f5;"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1">plt.plot(sol[:,<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>,<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>], sol[:,<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>,<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>], color<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'black'</span>, lw<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.5</span>)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb14-2">plt.title(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Phase plot of the Lorenz system"</span>)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb14-3">plt.xlabel(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"x"</span>)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb14-4">plt.ylabel(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"y"</span>)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span></code></pre></div>
+</details>
+<div class="cell-output cell-output-display">
+<p><img src="https://khannay.com/posts/pytorch-ode/ode_files/figure-html/cell-14-output-1.png" width="596" height="449"></p>
+</div>
+</div>
+</section>
+</section>
+<section id="data" class="level2">
+<h2 class="anchored" data-anchor-id="data">Data</h2>
+<p>Now that we can define the differential equation models in pytorch we need to create some data to be used in training. This is where things start to get really neat as we see our first glimpse of being able to hijack deep learning machinery for fitting the parameters. Really we could just use tensor of data directly, but this is a nice way to organize the data. It will also be useful if you have some experimental data that you want to use.</p>
+<p>Torch provides the <i> Dataset </i> class for loading in data. To use it you just need to create a subclass and define two methods. The <code>__len__</code> function that returns the number of data points and a <code>__getitem__</code> function that returns the data point at a given index. If you are wondering these methods are what underly the <code>len(array)</code> and ’array[0]` subscript access in python lists.</p>
+<p>The rest of boilerplate code needed in defined in the parent class <code>torch.utils.data.Dataset</code>. We will see the power of these method when we go to define a training loop.</p>
+<div class="cell" data-execution_count="14">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb15" style="background: #f1f3f5;"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb15-1"><span class="kw" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">class</span> SimODEData(Dataset):</span>
+<span id="cb15-2">    <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">""" </span></span>
+<span id="cb15-3"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">        A very simple dataset class for simulating ODEs</span></span>
+<span id="cb15-4"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">    """</span></span>
+<span id="cb15-5">    <span class="kw" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">def</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">__init__</span>(<span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">self</span>,</span>
+<span id="cb15-6">                 ts: List[torch.Tensor], <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># List of time points as tensors</span></span>
+<span id="cb15-7">                 values: List[torch.Tensor], <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># List of dynamical state values (tensor) at each time point </span></span>
+<span id="cb15-8">                 true_model: Union[torch.nn.Module,<span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">None</span>] <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">None</span>,</span>
+<span id="cb15-9">                 ) <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-&gt;</span> <span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">None</span>:</span>
+<span id="cb15-10">        <span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">self</span>.ts <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> ts </span>
+<span id="cb15-11">        <span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">self</span>.values <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> values </span>
+<span id="cb15-12">        <span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">self</span>.true_model <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> true_model</span>
+<span id="cb15-13">        </span>
+<span id="cb15-14">    <span class="kw" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">def</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">__len__</span>(<span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">self</span>) <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-&gt;</span> <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">int</span>:</span>
+<span id="cb15-15">        <span class="cf" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">return</span> <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">len</span>(<span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">self</span>.ts)</span>
+<span id="cb15-16">    </span>
+<span id="cb15-17">    <span class="kw" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">def</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">__getitem__</span>(<span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">self</span>, index: <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">int</span>) <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-&gt;</span> Tuple[torch.Tensor, torch.Tensor]:</span>
+<span id="cb15-18">        <span class="cf" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">return</span> <span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">self</span>.ts[index], <span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">self</span>.values[index]</span></code></pre></div>
+</details>
+</div>
+<p>Next let’s create a quick generator function to generate some simulated data to test the algorithms on. In a real use case the data would be loaded from a file or database, but for this example we will just generate some data. In fact, I recommend that you always start with generated data to make sure your code is working before you try to load real data.</p>
+<div class="cell" data-execution_count="15">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb16" style="background: #f1f3f5;"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><span class="kw" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">def</span> create_sim_dataset(model: nn.Module, <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># model to simulate from</span></span>
+<span id="cb16-2">                       ts: torch.Tensor, <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># Time points to simulate for</span></span>
+<span id="cb16-3">                       num_samples: <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">int</span> <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">10</span>, <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># Number of samples to generate</span></span>
+<span id="cb16-4">                       sigma_noise: <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">float</span> <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.1</span>, <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># Noise level to add to the data</span></span>
+<span id="cb16-5">                       initial_conditions_default: torch.Tensor <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> torch.tensor([<span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.0</span>, <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.0</span>]), <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># Default initial conditions</span></span>
+<span id="cb16-6">                       sigma_initial_conditions: <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">float</span> <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.1</span>, <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># Noise level to add to the initial conditions</span></span>
+<span id="cb16-7">                       ) <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-&gt;</span> SimODEData:</span>
+<span id="cb16-8">    ts_list <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> [] </span>
+<span id="cb16-9">    states_list <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> [] </span>
+<span id="cb16-10">    dim <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> initial_conditions_default.shape[<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>]</span>
+<span id="cb16-11">    <span class="cf" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">for</span> i <span class="kw" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">in</span> <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">range</span>(num_samples):</span>
+<span id="cb16-12">        x0 <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> sigma_initial_conditions <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span> torch.randn((<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>,dim)).detach() <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> initial_conditions_default</span>
+<span id="cb16-13">        ys <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> odeint(model, x0, ts).squeeze(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>).detach() </span>
+<span id="cb16-14">        ys <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+=</span> sigma_noise<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span>torch.randn_like(ys)</span>
+<span id="cb16-15">        ys[<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>,:] <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> x0 <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># Set the first value to the initial condition</span></span>
+<span id="cb16-16">        ts_list.append(ts)</span>
+<span id="cb16-17">        states_list.append(ys)</span>
+<span id="cb16-18">    <span class="cf" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">return</span> SimODEData(ts_list, states_list, true_model<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span>model)</span></code></pre></div>
+</details>
+</div>
+<p>This just takes in a differential equation model with some initial states and generates some time-series data from it (and adds in some gaussian noise). This data is then passed into our custom dataset container. Let’s define a couple of functions to visualize the model fits.</p>
+<div class="cell" data-execution_count="16">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb17" style="background: #f1f3f5;"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb17-1"><span class="kw" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">def</span> plot_time_series(true_model: torch.nn.Module, <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># true underlying model for the simulated data</span></span>
+<span id="cb17-2">                     fit_model: torch.nn.Module, <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># model fit to the data</span></span>
+<span id="cb17-3">                     data: SimODEData, <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># data set to plot (scatter)</span></span>
+<span id="cb17-4">                     time_range: <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">tuple</span> <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> (<span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.0</span>, <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">30.0</span>), <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># range of times to simulate the models for</span></span>
+<span id="cb17-5">                     ax: plt.Axes <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">None</span>, </span>
+<span id="cb17-6">                     dyn_var_idx: <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">int</span> <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>,</span>
+<span id="cb17-7">                     title: <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">str</span> <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Model fits"</span>,</span>
+<span id="cb17-8">                     <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span>args,</span>
+<span id="cb17-9">                     <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">**</span>kwargs) <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-&gt;</span> Tuple[plt.Figure, plt.Axes]:</span>
+<span id="cb17-10">    <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">"""</span></span>
+<span id="cb17-11"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">    Plot the true model and fit model on the same axes.</span></span>
+<span id="cb17-12"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">    """</span></span>
+<span id="cb17-13">    <span class="cf" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">if</span> ax <span class="kw" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">is</span> <span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">None</span>:</span>
+<span id="cb17-14">        fig, ax <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> plt.subplots()</span>
+<span id="cb17-15">    <span class="cf" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">else</span>:</span>
+<span id="cb17-16">        fig <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> ax.get_figure()</span>
+<span id="cb17-17">        </span>
+<span id="cb17-18">    vdp_model <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> VDP(mu <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.10</span>) </span>
+<span id="cb17-19">    ts <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> torch.linspace(time_range[<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>], time_range[<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>], <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1000</span>)</span>
+<span id="cb17-20">    ts_data, y_data <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> data</span>
+<span id="cb17-21"></span>
+<span id="cb17-22">    initial_conditions <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> y_data[<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>, :].unsqueeze(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>)</span>
+<span id="cb17-23">    sol_pred <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> odeint(fit_model, initial_conditions, ts, method<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'dopri5'</span>).detach().numpy()</span>
+<span id="cb17-24">    sol_true <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> odeint(true_model, initial_conditions, ts, method<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'dopri5'</span>).detach().numpy()</span>
+<span id="cb17-25">        </span>
+<span id="cb17-26">    ax.plot(ts, sol_pred[:,:,dyn_var_idx], color<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'skyblue'</span>, lw<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2.0</span>, label<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'Predicted'</span>, <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">**</span>kwargs)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb17-27">    ax.scatter(ts_data.detach(), y_data[:,dyn_var_idx].detach(), color<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'black'</span>, s<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">30</span>, label<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'Data'</span>,  <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">**</span>kwargs)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb17-28">    ax.plot(ts, sol_true[:,:,dyn_var_idx], color<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'black'</span>, ls<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'--'</span>, lw<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1.0</span>, label<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'True model'</span>, <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">**</span>kwargs)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb17-29">    ax.set_title(title)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb17-30">    ax.set_xlabel(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"t"</span>)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb17-31">    ax.set_ylabel(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"y"</span>)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb17-32">    plt.legend()<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb17-33">    <span class="cf" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">return</span> fig, ax</span></code></pre></div>
+</details>
+</div>
+<div class="cell" data-execution_count="17">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb18" style="background: #f1f3f5;"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb18-1"><span class="kw" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">def</span> plot_phase_plane(true_model: torch.nn.Module, <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># true underlying model for the simulated data</span></span>
+<span id="cb18-2">                     fit_model: torch.nn.Module, <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># model fit to the data</span></span>
+<span id="cb18-3">                     data: SimODEData, <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># data set to plot (scatter)</span></span>
+<span id="cb18-4">                     time_range: <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">tuple</span> <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> (<span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.0</span>, <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">30.0</span>), <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># range of times to simulate the models for</span></span>
+<span id="cb18-5">                     ax: plt.Axes <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">None</span>, </span>
+<span id="cb18-6">                     dyn_var_idx: <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">tuple</span> <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> (<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>,<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>),</span>
+<span id="cb18-7">                     title: <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">str</span> <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Model fits"</span>,</span>
+<span id="cb18-8">                     <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span>args,</span>
+<span id="cb18-9">                     <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">**</span>kwargs) <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-&gt;</span> Tuple[plt.Figure, plt.Axes]:</span>
+<span id="cb18-10">    <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">"""</span></span>
+<span id="cb18-11"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">    Plot the true model and fit model on the same axes.</span></span>
+<span id="cb18-12"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">    """</span></span>
+<span id="cb18-13">    <span class="cf" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">if</span> ax <span class="kw" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">is</span> <span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">None</span>:</span>
+<span id="cb18-14">        fig, ax <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> plt.subplots()</span>
+<span id="cb18-15">    <span class="cf" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">else</span>:</span>
+<span id="cb18-16">        fig <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> ax.get_figure()</span>
+<span id="cb18-17">        </span>
+<span id="cb18-18">    ts <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> torch.linspace(time_range[<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>], time_range[<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>], <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1000</span>)</span>
+<span id="cb18-19">    ts_data, y_data <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> data</span>
+<span id="cb18-20">    </span>
+<span id="cb18-21">    initial_conditions <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> y_data[<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>, :].unsqueeze(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>)</span>
+<span id="cb18-22">    sol_pred <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> odeint(fit_model, initial_conditions, ts, method<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'dopri5'</span>).detach().numpy()</span>
+<span id="cb18-23">    sol_true <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> odeint(true_model, initial_conditions, ts, method<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'dopri5'</span>).detach().numpy()</span>
+<span id="cb18-24">    </span>
+<span id="cb18-25">    idx1, idx2 <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> dyn_var_idx</span>
+<span id="cb18-26">    </span>
+<span id="cb18-27">    ax.plot(sol_pred[:,:,idx1], sol_pred[:,:,idx2], color<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'skyblue'</span>, lw<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1.0</span>, label<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'Fit model'</span>)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb18-28">    ax.scatter(y_data[:,idx1], y_data[:,idx2].detach(), color<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'black'</span>, s<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">30</span>, label<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'Data'</span>)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb18-29">    ax.plot(sol_true[:,:,idx1], sol_true[:,:,idx2], color<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'black'</span>, ls<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'--'</span>, lw<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1.0</span>, label<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'True model'</span>)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb18-30">    ax.set_xlabel(<span class="vs" style="color: #20794D;
+background-color: null;
+font-style: inherit;">r'$x$'</span>)</span>
+<span id="cb18-31">    ax.set_ylabel(<span class="vs" style="color: #20794D;
+background-color: null;
+font-style: inherit;">r'$y$'</span>)</span>
+<span id="cb18-32">    ax.set_title(title)</span>
+<span id="cb18-33">    <span class="cf" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">return</span> fig, ax</span></code></pre></div>
+</details>
+</div>
+</section>
+<section id="training-loop" class="level2">
+<h2 class="anchored" data-anchor-id="training-loop">Training Loop</h2>
+<p>Next we will create a wrapper function for a pytorch training loop. Training means we want to update the model parameters to increase the alignment with the data ( or decrease the misalignment).</p>
+<p>One of the tricks for this from deep learning is to not use all the data before taking a gradient step. Part of this is necessity for using enormous datasets as you can’t fit all of that data inside a GPU’s memory, but this also can help the gradient descent algorithm avoid getting stuck in local minima.</p>
+<p>The training loop in words: * Divide the dataset into mini-batches, these are subsets of your entire data set. Usually want to choose these randomly. * Iterate through the mini-batches, for each mini-batch: * Generate the predictions using the current model parameters * Calculate the loss (here we will use the mean squared error) * Calculate the gradients, using backpropagation.<br>
+* Update the parameters using a gradient descent step. Here we use the Adam optimizer. * Each full pass through the dataset is called an epoch.</p>
+<p>Okay here is the code:</p>
+<div class="cell" data-execution_count="18">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb19" style="background: #f1f3f5;"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb19-1"><span class="kw" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">def</span> train(model: torch.nn.Module, <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># Model to train</span></span>
+<span id="cb19-2">          data: SimODEData, <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># Data to train on</span></span>
+<span id="cb19-3">          lr: <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">float</span> <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1e-2</span>, <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># learning rate for the Adam optimizer</span></span>
+<span id="cb19-4">          epochs: <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">int</span> <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">10</span>, <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># Number of epochs to train for</span></span>
+<span id="cb19-5">          batch_size: <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">int</span> <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">5</span>, <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># Batch size for training</span></span>
+<span id="cb19-6">          method <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'rk4'</span>, <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># ODE solver to use</span></span>
+<span id="cb19-7">          step_size: <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">float</span> <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.10</span>, <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># for fixed diffeq solver set the step size</span></span>
+<span id="cb19-8">          show_every: <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">int</span> <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">10</span>, <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># How often to print the loss function message</span></span>
+<span id="cb19-9">          save_plots_every: Union[<span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">int</span>,<span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">None</span>] <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">None</span>, <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># save a plot of the fit, to disable make this None</span></span>
+<span id="cb19-10">          model_name: <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">str</span> <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">""</span>, <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#string for the model, used to reference the saved plots </span></span>
+<span id="cb19-11">          <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span>args: <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">tuple</span>, </span>
+<span id="cb19-12">          <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">**</span>kwargs: <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">dict</span></span>
+<span id="cb19-13">          ):</span>
+<span id="cb19-14">    </span>
+<span id="cb19-15">    <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># Create a data loader to iterate over the data. This takes in our dataset and returns batches of data</span></span>
+<span id="cb19-16">    trainloader <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> DataLoader(data, batch_size<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span>batch_size, shuffle<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">True</span>)</span>
+<span id="cb19-17">    <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># Choose an optimizer. Adam is a good default choice as a fancy gradient descent</span></span>
+<span id="cb19-18">    optimizer <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> torch.optim.Adam(model.parameters(), lr<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span>lr)</span>
+<span id="cb19-19">    <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># Create a loss function this computes the error between the predicted and true values</span></span>
+<span id="cb19-20">    criterion <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> torch.nn.MSELoss() </span>
+<span id="cb19-21">    </span>
+<span id="cb19-22">    <span class="cf" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">for</span> epoch <span class="kw" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">in</span> <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">range</span>(epochs):</span>
+<span id="cb19-23">        running_loss <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.0</span> </span>
+<span id="cb19-24">        <span class="cf" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">for</span> batchdata <span class="kw" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">in</span> trainloader:</span>
+<span id="cb19-25">            optimizer.zero_grad() <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># reset gradients, famous gotcha in a pytorch training loop</span></span>
+<span id="cb19-26">            ts, states <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> batchdata <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># unpack the data </span></span>
+<span id="cb19-27">            initial_state <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> states[:,<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>,:] <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># grab the initial state</span></span>
+<span id="cb19-28">            <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># Make the prediction and then flip the dimensions to be (batch, state_dim, time)</span></span>
+<span id="cb19-29">            <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># Pytorch expects the batch dimension to be first</span></span>
+<span id="cb19-30">            pred <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> odeint(model, initial_state, ts[<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>], method<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span>method, options<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span>{<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'step_size'</span>: step_size}).transpose(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>,<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>) </span>
+<span id="cb19-31">            <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># Compute the loss</span></span>
+<span id="cb19-32">            loss <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> criterion(pred, states)</span>
+<span id="cb19-33">            <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># compute gradients</span></span>
+<span id="cb19-34">            loss.backward() </span>
+<span id="cb19-35">            <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># update parameters</span></span>
+<span id="cb19-36">            optimizer.step() </span>
+<span id="cb19-37">            running_loss <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+=</span> loss.item() <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># record loss</span></span>
+<span id="cb19-38">        <span class="cf" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">if</span> epoch <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%</span> show_every <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">==</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>:</span>
+<span id="cb19-39">            <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">print</span>(<span class="ss" style="color: #20794D;
+background-color: null;
+font-style: inherit;">f"Loss at </span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">{</span>epoch<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">}</span><span class="ss" style="color: #20794D;
+background-color: null;
+font-style: inherit;">: </span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">{</span>running_loss<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">}</span><span class="ss" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"</span>)</span>
+<span id="cb19-40">        <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># Use this to save plots of the fit every save_plots_every epochs</span></span>
+<span id="cb19-41">        <span class="cf" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">if</span> save_plots_every <span class="kw" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">is</span> <span class="kw" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">not</span> <span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">None</span> <span class="kw" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">and</span> epoch <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%</span> save_plots_every <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">==</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>:</span>
+<span id="cb19-42">            <span class="cf" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">with</span> torch.no_grad():</span>
+<span id="cb19-43">                fig, ax <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> plot_time_series(data.true_model, model, data[<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>])</span>
+<span id="cb19-44">                ax.set_title(<span class="ss" style="color: #20794D;
+background-color: null;
+font-style: inherit;">f"Epoch: </span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">{</span>epoch<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">}</span><span class="ss" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"</span>)</span>
+<span id="cb19-45">                fig.savefig(<span class="ss" style="color: #20794D;
+background-color: null;
+font-style: inherit;">f"./tmp_plots/</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">{</span>epoch<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">}</span><span class="ss" style="color: #20794D;
+background-color: null;
+font-style: inherit;">_</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">{</span>model_name<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">}</span><span class="ss" style="color: #20794D;
+background-color: null;
+font-style: inherit;">_fit_plot"</span>)</span>
+<span id="cb19-46">                plt.close()</span></code></pre></div>
+</details>
+</div>
+</section>
+<section id="examples" class="level2">
+<h2 class="anchored" data-anchor-id="examples">Examples</h2>
+<section id="fitting-the-vdp-oscillator" class="level3">
+<h3 class="anchored" data-anchor-id="fitting-the-vdp-oscillator">Fitting the VDP Oscillator</h3>
+<p>Let’s use this training loop to recover the parameters from simulated VDP oscillator data.</p>
+<div class="cell" data-execution_count="19">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb20" style="background: #f1f3f5;"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb20-1">true_mu <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.30</span></span>
+<span id="cb20-2">model_sim <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> VDP(mu<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span>true_mu)</span>
+<span id="cb20-3">ts_data <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> torch.linspace(<span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.0</span>,<span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">10.0</span>,<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">10</span>) </span>
+<span id="cb20-4">data_vdp <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> create_sim_dataset(model_sim, </span>
+<span id="cb20-5">                              ts <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> ts_data, </span>
+<span id="cb20-6">                              num_samples<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">10</span>, </span>
+<span id="cb20-7">                              sigma_noise<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.01</span>)</span></code></pre></div>
+</details>
+</div>
+<p>Let’s create a model with the wrong parameter value and visualize the starting point.</p>
+<div class="cell" data-execution_count="20">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb21" style="background: #f1f3f5;"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb21-1">vdp_model <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> VDP(mu <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.10</span>) </span>
+<span id="cb21-2">plot_time_series(model_sim, </span>
+<span id="cb21-3">                 vdp_model, </span>
+<span id="cb21-4">                 data_vdp[<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>], </span>
+<span id="cb21-5">                 dyn_var_idx<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>, </span>
+<span id="cb21-6">                 title <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"VDP Model: Before Parameter Fits"</span>)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span></code></pre></div>
+</details>
+<div class="cell-output cell-output-display">
+<p><img src="https://khannay.com/posts/pytorch-ode/ode_files/figure-html/cell-21-output-1.png" width="587" height="449"></p>
+</div>
+</div>
+<p>Now, we will use the training loop to fit the parameters of the VDP oscillator to the simulated data.</p>
+<div class="cell" data-execution_count="21">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb22" style="background: #f1f3f5;"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb22-1">train(vdp_model, data_vdp, epochs<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">50</span>, model_name<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"vdp"</span>)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb22-2"><span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">print</span>(<span class="ss" style="color: #20794D;
+background-color: null;
+font-style: inherit;">f"After training: </span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">{</span>vdp_model<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">}</span><span class="ss" style="color: #20794D;
+background-color: null;
+font-style: inherit;">, where the true value is </span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">{</span>true_mu<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">}</span><span class="ss" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"</span>)</span>
+<span id="cb22-3"><span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">print</span>(<span class="ss" style="color: #20794D;
+background-color: null;
+font-style: inherit;">f"Final Parameter Recovery Error: </span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">{</span>vdp_model<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span>mu <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span> true_mu<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">}</span><span class="ss" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"</span>)</span></code></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>Loss at 0: 0.1756787821650505
+Loss at 10: 0.008743234211578965
+Loss at 20: 0.0012590152909979224
+Loss at 30: 0.00026920452364720404
+Loss at 40: 0.0002005345668294467
+After training:  mu: 0.3009839951992035, where the true value is 0.3
+Final Parameter Recovery Error: 0.0009839832782745361</code></pre>
+</div>
+</div>
+<p>Not to bad! Let’s see how the plot looks now…</p>
+<div class="cell" data-execution_count="22">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb24" style="background: #f1f3f5;"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb24-1">plot_time_series(model_sim, vdp_model, data_vdp[<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>], dyn_var_idx<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>, title <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"VDP Model: Before Parameter Fits"</span>)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span></code></pre></div>
+</details>
+<div class="cell-output cell-output-display">
+<p><img src="https://khannay.com/posts/pytorch-ode/ode_files/figure-html/cell-23-output-1.png" width="587" height="449"></p>
+</div>
+</div>
+<p>The plot confirms that we almost perfectly recovered the parameter. One more quick plot, where we plot the dynamics of the system in the phase plane (a parametric plot of the state variables).</p>
+<div class="cell" data-execution_count="23">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb25" style="background: #f1f3f5;"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb25-1">plot_phase_plane(model_sim, vdp_model, data_vdp[<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>], title <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"VDP Model: After Fitting"</span>)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span></code></pre></div>
+</details>
+<div class="cell-output cell-output-display">
+<p><img src="https://khannay.com/posts/pytorch-ode/ode_files/figure-html/cell-24-output-1.png" width="587" height="449"></p>
+</div>
+</div>
+<p>Figure&nbsp;1 shows the results of the fit.</p>
+<div id="fig-vdp-fit" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="https://khannay.com/posts/pytorch-ode/img/vdp.gif" class="img-fluid figure-img"></p>
+<figcaption class="figure-caption">Figure&nbsp;1: Model fitting for a VDP equation model</figcaption>
+</figure>
+</div>
+</section>
+<section id="lotka-voltera-equations" class="level3">
+<h3 class="anchored" data-anchor-id="lotka-voltera-equations">Lotka Voltera Equations</h3>
+<p>Now lets adapt our methods to fit simulated data from the Lotka Voltera equations.</p>
+<div class="cell" data-execution_count="24">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb26" style="background: #f1f3f5;"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb26-1">model_sim_lv <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> LotkaVolterra(<span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1.5</span>,<span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1.0</span>,<span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">3.0</span>,<span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1.0</span>)</span>
+<span id="cb26-2">ts_data <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> torch.arange(<span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.0</span>, <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">10.0</span>, <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.1</span>)</span>
+<span id="cb26-3">data_lv <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> create_sim_dataset(model_sim_lv, </span>
+<span id="cb26-4">                              ts <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> ts_data, </span>
+<span id="cb26-5">                              num_samples<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">10</span>, </span>
+<span id="cb26-6">                              sigma_noise<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.1</span>,</span>
+<span id="cb26-7">                              initial_conditions_default<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span>torch.tensor([<span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2.5</span>, <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2.5</span>]))</span></code></pre></div>
+</details>
+</div>
+<div class="cell" data-execution_count="25">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb27" style="background: #f1f3f5;"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb27-1">model_lv <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> LotkaVolterra(alpha<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1.6</span>, beta<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1.1</span>,delta<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2.7</span>, gamma<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1.2</span>) </span>
+<span id="cb27-2"></span>
+<span id="cb27-3">plot_time_series(model_sim_lv, model_lv, data <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> data_lv[<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>], title <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Lotka Volterra: Before Fitting"</span>)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span></code></pre></div>
+</details>
+<div class="cell-output cell-output-display">
+<p><img src="https://khannay.com/posts/pytorch-ode/ode_files/figure-html/cell-26-output-1.png" width="589" height="449"></p>
+</div>
+</div>
+<div class="cell" data-execution_count="26">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb28" style="background: #f1f3f5;"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb28-1">train(model_lv, data_lv, epochs<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">60</span>, lr<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1e-2</span>, model_name<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"lotkavolterra"</span>)</span>
+<span id="cb28-2"><span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">print</span>(<span class="ss" style="color: #20794D;
+background-color: null;
+font-style: inherit;">f"Fitted model: </span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">{</span>model_lv<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">}</span><span class="ss" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"</span>)</span>
+<span id="cb28-3"><span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">print</span>(<span class="ss" style="color: #20794D;
+background-color: null;
+font-style: inherit;">f"True model: </span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">{</span>model_sim_lv<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">}</span><span class="ss" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"</span>)</span></code></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>Loss at 0: 1.1350820064544678
+Loss at 10: 0.1333734095096588
+Loss at 20: 0.047438858076930046
+Loss at 30: 0.02459188550710678
+Loss at 40: 0.022399690933525562
+Loss at 50: 0.02224074024707079
+Fitted model:  alpha: 1.5970245599746704,             beta: 1.046509027481079,                 delta: 2.8160459995269775,                     gamma: 0.939906895160675
+True model:  alpha: 1.5,             beta: 1.0,                 delta: 3.0,                     gamma: 1.0</code></pre>
+</div>
+</div>
+<div class="cell" data-execution_count="27">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb30" style="background: #f1f3f5;"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb30-1">plot_time_series(model_sim_lv, model_lv, data <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> data_lv[<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>], title <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Lotka Volterra: After Fitting"</span>)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span></code></pre></div>
+</details>
+<div class="cell-output cell-output-display">
+<p><img src="https://khannay.com/posts/pytorch-ode/ode_files/figure-html/cell-28-output-1.png" width="589" height="449"></p>
+</div>
+</div>
+<p>Now let’s visualize the results using a phase plane plot.</p>
+<div class="cell" data-execution_count="28">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb31" style="background: #f1f3f5;"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb31-1">plot_phase_plane(model_sim_lv, model_lv, data_lv[<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>], title<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Phase Plane for Lotka Volterra: After Fitting"</span>)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span></code></pre></div>
+</details>
+<div class="cell-output cell-output-display">
+<p><img src="https://khannay.com/posts/pytorch-ode/ode_files/figure-html/cell-29-output-1.png" width="589" height="449"></p>
+</div>
+</div>
+<p>Figure&nbsp;2 shows the results of the fit.</p>
+<div id="fig-lv-fit" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="https://khannay.com/posts/pytorch-ode/img/lotkavolterra.gif" class="img-fluid figure-img"></p>
+<figcaption class="figure-caption">Figure&nbsp;2: Model fitting visual for the Lotka-Volterra system</figcaption>
+</figure>
+</div>
+</section>
+<section id="lorenz-equations" class="level3">
+<h3 class="anchored" data-anchor-id="lorenz-equations">Lorenz Equations</h3>
+<p>Finally, let’s try to fit the Lorenz equations.</p>
+<div class="cell" data-execution_count="29">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb32" style="background: #f1f3f5;"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb32-1">model_sim_lorenz <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> Lorenz(sigma<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">10.0</span>, rho<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">28.0</span>, beta<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">8.0</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/</span><span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">3.0</span>)</span>
+<span id="cb32-2">ts_data <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> torch.arange(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>, <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">10.0</span>, <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.05</span>)</span>
+<span id="cb32-3">data_lorenz <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> create_sim_dataset(model_sim_lorenz, </span>
+<span id="cb32-4">                              ts <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> ts_data, </span>
+<span id="cb32-5">                              num_samples<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">30</span>, </span>
+<span id="cb32-6">                              initial_conditions_default<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span>torch.tensor([<span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1.0</span>, <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.0</span>, <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.0</span>]),</span>
+<span id="cb32-7">                              sigma_noise<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.01</span>, </span>
+<span id="cb32-8">                              sigma_initial_conditions<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.10</span>)</span></code></pre></div>
+</details>
+</div>
+<div class="cell" data-execution_count="30">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb33" style="background: #f1f3f5;"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb33-1">lorenz_model <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> Lorenz(sigma<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">10.2</span>, rho<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">28.2</span>, beta<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">9.0</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">3</span>) </span>
+<span id="cb33-2">fig, ax <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> plot_time_series(model_sim_lorenz, lorenz_model, data_lorenz[<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>], title<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Lorenz Model: Before Fitting"</span>)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb33-3"></span>
+<span id="cb33-4">ax.set_xlim((<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span>,<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">15</span>))<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span></code></pre></div>
+</details>
+<div class="cell-output cell-output-display">
+<p><img src="https://khannay.com/posts/pytorch-ode/ode_files/figure-html/cell-31-output-1.png" width="596" height="449"></p>
+</div>
+</div>
+<div class="cell" data-execution_count="31">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb34" style="background: #f1f3f5;"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb34-1">train(lorenz_model, </span>
+<span id="cb34-2">      data_lorenz, </span>
+<span id="cb34-3">      epochs<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">300</span>, </span>
+<span id="cb34-4">      batch_size<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">5</span>,</span>
+<span id="cb34-5">      method <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'rk4'</span>,</span>
+<span id="cb34-6">      step_size<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.05</span>,</span>
+<span id="cb34-7">      show_every<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">50</span>,</span>
+<span id="cb34-8">      lr <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1e-3</span>)</span></code></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>Loss at 0: 112.87475204467773
+Loss at 50: 4.314377665519714
+Loss at 100: 2.0217812061309814
+Loss at 150: 1.2296464890241623
+Loss at 200: 0.768804207444191
+Loss at 250: 0.5259109809994698</code></pre>
+</div>
+</div>
+<p>Let’s look at the results from the fitting procedure. Starting with a full plot of the dynamics.</p>
+<div class="cell" data-execution_count="32">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb36" style="background: #f1f3f5;"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb36-1">fig, ax <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> plot_time_series(model_sim_lorenz, lorenz_model, data_lorenz[<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>], title <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Lorenz Model: After Fitting"</span>)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span> </span></code></pre></div>
+</details>
+<div class="cell-output cell-output-display">
+<p><img src="https://khannay.com/posts/pytorch-ode/ode_files/figure-html/cell-33-output-1.png" width="596" height="449"></p>
+</div>
+</div>
+<p>Let’s zoom in on the bulk of the data and see how the fit looks.</p>
+<div class="cell" data-execution_count="33">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb37" style="background: #f1f3f5;"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb37-1">fig, ax <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> plot_time_series(model_sim_lorenz, lorenz_model, data_lorenz[<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>], title <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Lorenz Model: After Fitting"</span>)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span> </span>
+<span id="cb37-2">ax.set_xlim((<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span>,<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">20</span>))<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span></code></pre></div>
+</details>
+<div class="cell-output cell-output-display">
+<p><img src="https://khannay.com/posts/pytorch-ode/ode_files/figure-html/cell-34-output-1.png" width="604" height="449"></p>
+</div>
+</div>
+<p>You can see the model is very close to the true model for the data range. Now the phase plane plot.</p>
+<div class="cell" data-execution_count="34">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb38" style="background: #f1f3f5;"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb38-1">plot_phase_plane(model_sim_lorenz, lorenz_model, data_lorenz[<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>], title <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Lorenz Model: After Fitting"</span>, time_range<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span>(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>,<span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">20.0</span>))<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span></code></pre></div>
+</details>
+<div class="cell-output cell-output-display">
+<p><img src="https://khannay.com/posts/pytorch-ode/ode_files/figure-html/cell-35-output-1.png" width="596" height="449"></p>
+</div>
+</div>
+<p>You can see that our fitted model performs well for t in [0,17] and then starts to diverge.</p>
+</section>
+</section>
+<section id="intro-to-neural-differential-equations" class="level1">
+<h1>Intro to Neural Differential Equations</h1>
+<p>This is great for the situation where we know the form of the equations on the right-hand-side, but what if we don’t? Can we use this procedure to discover the model equations?</p>
+<p>This is much too big of a subject to cover in this post (stay tuned), but one of the biggest advantages of moving our differential equations models into the torch framework is that we can mix and match them with artificial neural network layers.</p>
+<p>The simplest thing we can do is to replace the right-hand-side <img src="https://latex.codecogs.com/png.latex?f(y,t;%20%5Ctheta)"> with a neural network layer <img src="https://latex.codecogs.com/png.latex?l_%5Ctheta(y,t)">. These types of equations have been called a neural differential equations and it can be viewed as generalization of a recurrent neural network (citation).</p>
+<p>Let’s do this for the our simple VDP oscillator system.</p>
+<p>Let’s remake the simulated data, you will notice that I am creating longer time-series of the data, and more samples. Fitting a neural differential equation takes much more data and more computational power since we have many more parameters that need to be determined.</p>
+<div class="cell" data-execution_count="35">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb39" style="background: #f1f3f5;"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb39-1"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># remake the data </span></span>
+<span id="cb39-2">model_sim_vdp <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> VDP(mu<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.20</span>)</span>
+<span id="cb39-3">ts_data <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> torch.linspace(<span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.0</span>,<span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">30.0</span>,<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">100</span>) <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># longer time series than the custom ode layer</span></span>
+<span id="cb39-4">data_vdp <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> create_sim_dataset(model_sim_vdp, </span>
+<span id="cb39-5">                              ts <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> ts_data, </span>
+<span id="cb39-6">                              num_samples<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">30</span>, <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># more samples than the custom ode layer</span></span>
+<span id="cb39-7">                              sigma_noise<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.1</span>,</span>
+<span id="cb39-8">                              initial_conditions_default<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span>torch.tensor([<span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.50</span>,<span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.10</span>]))</span></code></pre></div>
+</details>
+</div>
+<div class="cell" data-execution_count="36">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb40" style="background: #f1f3f5;"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb40-1"><span class="kw" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">class</span> NeuralDiffEq(nn.Module):</span>
+<span id="cb40-2">    <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">""" </span></span>
+<span id="cb40-3"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">    Basic Neural ODE model</span></span>
+<span id="cb40-4"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">    """</span></span>
+<span id="cb40-5">    <span class="kw" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">def</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">__init__</span>(<span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">self</span>,</span>
+<span id="cb40-6">                 dim: <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">int</span> <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span>, <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># dimension of the state vector</span></span>
+<span id="cb40-7">                 ) <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-&gt;</span> <span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">None</span>:</span>
+<span id="cb40-8">        <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">super</span>().<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">__init__</span>()</span>
+<span id="cb40-9">        <span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">self</span>.ann <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> nn.Sequential(torch.nn.Linear(dim, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">8</span>), </span>
+<span id="cb40-10">                                 torch.nn.LeakyReLU(), </span>
+<span id="cb40-11">                                 torch.nn.Linear(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">8</span>, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">16</span>), </span>
+<span id="cb40-12">                                 torch.nn.LeakyReLU(), </span>
+<span id="cb40-13">                                 torch.nn.Linear(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">16</span>, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">32</span>), </span>
+<span id="cb40-14">                                 torch.nn.LeakyReLU(), </span>
+<span id="cb40-15">                                 torch.nn.Linear(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">32</span>, dim))</span>
+<span id="cb40-16">        </span>
+<span id="cb40-17">    <span class="kw" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">def</span> forward(<span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">self</span>, t, state):</span>
+<span id="cb40-18">        <span class="cf" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">return</span> <span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">self</span>.ann(state)</span></code></pre></div>
+</details>
+</div>
+<div class="cell" data-execution_count="37">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb41" style="background: #f1f3f5;"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb41-1">model_vdp_nde <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> NeuralDiffEq(dim<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span>) </span>
+<span id="cb41-2">plot_time_series(model_sim_vdp, model_vdp_nde, data_vdp[<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>], title <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Neural ODE: Before Fitting"</span>)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span></code></pre></div>
+</details>
+<div class="cell-output cell-output-display">
+<p><img src="https://khannay.com/posts/pytorch-ode/ode_files/figure-html/cell-38-output-1.png" width="600" height="449"></p>
+</div>
+</div>
+<p>You can see we start very far away for the correct solution, but then again we are injecting much less information into our model. Let’s see if we can fit the model to get better results.</p>
+<div class="cell" data-execution_count="38">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb42" style="background: #f1f3f5;"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb42-1">train(model_vdp_nde, </span>
+<span id="cb42-2">      data_vdp, </span>
+<span id="cb42-3">      epochs<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1500</span>, </span>
+<span id="cb42-4">      lr<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1e-3</span>, </span>
+<span id="cb42-5">      batch_size<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">5</span>,</span>
+<span id="cb42-6">      show_every<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">100</span>,</span>
+<span id="cb42-7">      model_name <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"nde"</span>)</span></code></pre></div>
+</details>
+</div>
+<p>Visualizing the results, we can see that the model is able to fit the data and even extrapolate to the future (although it is not as good or fast as the specified model). Figure&nbsp;3 shows the results of the model fitting procedure.</p>
+<div id="fig-nde-fit" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="https://khannay.com/posts/pytorch-ode/img/nde.gif" class="img-fluid figure-img"></p>
+<figcaption class="figure-caption">Figure&nbsp;3: Model fitting for a Neural Differential Equation Model</figcaption>
+</figure>
+</div>
+<p>These models take a long time to train and more data to converge on a good fit. This makes sense since we are both trying to learn the model and the parameters at the same time.</p>
+<section id="conclusions-and-wrap-up" class="level2">
+<h2 class="anchored" data-anchor-id="conclusions-and-wrap-up">Conclusions and Wrap-Up</h2>
+<p>In this article I have demonstrated how we can use differential equation models within the pytorch ecosytem using the torchdiffeq package. The code from this article is available on <a> github </a> and can be opened directly to google colab for experimentation. You can also install the code from this article using pip (pip install paramfittorchdemo).</p>
+<p>This post is an introduction in the future I will be writing more about the following topics:</p>
+<ul>
+<li>How to blend some mechanistic knowledge of the dynamics with deep learning. These have been called <a href="https://arxiv.org/abs/2001.04385"> universal differential equations </a> as they enable us to combine scientific knowledge with deep learning. This basically blends the two approaches together.</li>
+<li>How to combine differential equation layers with other deep learning layers.</li>
+<li>Model discovery: Can we recover the actual model equations from data? This uses tools like <a href="https://www.pnas.org/doi/10.1073/pnas.1906995116"> SINDy </a> to extract the model equations from data.</li>
+<li>MLOps tools for managing the training of these models. This includes tools like <a href="https://mlflow.org/"> MLFlow </a>, <a href="https://wandb.ai/home"> Weights and Biases </a>, and <a href="https://pytorch.org/docs/stable/tensorboard.html"> Tensorboard </a>.</li>
+<li>Anything else I hear back about from you!</li>
+</ul>
+<p>Happy modeling!</p>
+
+
+</section>
+</section>
+
+<div id="quarto-appendix" class="default"><section class="quarto-appendix-contents"><h2 class="anchored quarto-appendix-heading">Reuse</h2><div id="quarto-reuse" class="quarto-appendix-contents"><div><a rel="license" href="https://creativecommons.org/licenses/by/4.0/">https://creativecommons.org/licenses/by/4.0/</a></div></div></section><section class="quarto-appendix-contents"><h2 class="anchored quarto-appendix-heading">Citation</h2><div><div class="quarto-appendix-secondary-label">BibTeX citation:</div><pre class="sourceCode code-with-copy quarto-appendix-bibtex"><code class="sourceCode bibtex">@online{hannay2023,
+  author = {Hannay, Kevin},
+  title = {Differential {Equations} as a {Pytorch} {Neural} {Network}
+    {Layer}},
+  date = {2023-04-08},
+  url = {https://khannay.com/posts/pytorch-ode/ode.html},
+  langid = {en}
+}
+</code></pre><div class="quarto-appendix-secondary-label">For attribution, please cite this work as:</div><div id="ref-hannay2023" class="csl-entry quarto-appendix-citeas">
+Hannay, Kevin. 2023. <span>“Differential Equations as a Pytorch Neural
+Network Layer.”</span> April 8, 2023. <a href="https://khannay.com/posts/pytorch-ode/ode.html">https://khannay.com/posts/pytorch-ode/ode.html</a>.
+</div></div></section></div> ]]></description>
+  <category>deep learning</category>
+  <category>data science</category>
+  <category>differential equations</category>
+  <guid>https://khannay.com/posts/pytorch-ode/ode.html</guid>
+  <pubDate>Sat, 08 Apr 2023 00:00:00 GMT</pubDate>
+  <media:content url="https://khannay.com/posts/pytorch-ode/img/lorenz_fit.png" medium="image" type="image/png" height="109" width="144"/>
+</item>
 <item>
   <title>Entrainment Signal Regularity Index: Measuring Circadian Disruption</title>
   <dc:creator>Kevin Hannay</dc:creator>
@@ -27,8 +2818,8 @@
 
 </section>
 
-<div id="quarto-appendix" class="default"><section class="quarto-appendix-contents"><h2 class="anchored quarto-appendix-heading">Reuse</h2><div quarto-reuse="quarto-reuse" class="quarto-appendix-contents"><a rel="license" href="https://creativecommons.org/licenses/by/4.0/">https://creativecommons.org/licenses/by/4.0/</a></div></section><section class="quarto-appendix-contents"><h2 class="anchored quarto-appendix-heading">Citation</h2><div><div class="quarto-appendix-secondary-label">BibTeX citation:</div><pre class="sourceCode code-with-copy quarto-appendix-bibtex"><code class="sourceCode bibtex">@online{hannay2023,
-  author = {Kevin Hannay},
+<div id="quarto-appendix" class="default"><section class="quarto-appendix-contents"><h2 class="anchored quarto-appendix-heading">Reuse</h2><div id="quarto-reuse" class="quarto-appendix-contents"><div><a rel="license" href="https://creativecommons.org/licenses/by/4.0/">https://creativecommons.org/licenses/by/4.0/</a></div></div></section><section class="quarto-appendix-contents"><h2 class="anchored quarto-appendix-heading">Citation</h2><div><div class="quarto-appendix-secondary-label">BibTeX citation:</div><pre class="sourceCode code-with-copy quarto-appendix-bibtex"><code class="sourceCode bibtex">@online{hannay2023,
+  author = {Hannay, Kevin},
   title = {Entrainment {Signal} {Regularity} {Index:} {Measuring}
     {Circadian} {Disruption}},
   date = {2023-02-02},
@@ -36,7 +2827,7 @@
   langid = {en}
 }
 </code></pre><div class="quarto-appendix-secondary-label">For attribution, please cite this work as:</div><div id="ref-hannay2023" class="csl-entry quarto-appendix-citeas">
-Kevin Hannay. 2023. <span>“Entrainment Signal Regularity Index:
+Hannay, Kevin. 2023. <span>“Entrainment Signal Regularity Index:
 Measuring Circadian Disruption.”</span> February 2, 2023. <a href="https://khannay.com/posts/esri">https://khannay.com/posts/esri</a>.
 </div></div></section></div> ]]></description>
   <category>circadian</category>

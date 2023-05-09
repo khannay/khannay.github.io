@@ -1,31 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://khannay.com/posts/esri/index.html</loc>
-    <lastmod>2023-04-13T02:05:05.042Z</lastmod>
-  </url>
-  <url>
-    <loc>https://khannay.com/index.html</loc>
-    <lastmod>2023-04-13T02:05:05.702Z</lastmod>
-  </url>
-  <url>
-    <loc>https://khannay.com/software.html</loc>
-    <lastmod>2023-04-13T02:05:09.382Z</lastmod>
-  </url>
-  <url>
     <loc>https://khannay.com/cv.html</loc>
-    <lastmod>2023-04-13T02:05:09.758Z</lastmod>
-  </url>
-  <url>
-    <loc>https://khannay.com/blog.html</loc>
-    <lastmod>2023-04-13T02:05:10.078Z</lastmod>
-  </url>
-  <url>
-    <loc>https://khannay.com/about.html</loc>
-    <lastmod>2023-04-13T02:05:10.410Z</lastmod>
+    <lastmod>2023-05-09T21:13:57.548Z</lastmod>
   </url>
   <url>
     <loc>https://khannay.com/research.html</loc>
-    <lastmod>2023-04-13T02:05:13.054Z</lastmod>
+    <lastmod>2023-05-09T21:14:02.764Z</lastmod>
+  </url>
+  <url>
+    <loc>https://khannay.com/posts/esri/index.html</loc>
+    <lastmod>2023-05-09T21:14:03.292Z</lastmod>
+  </url>
+  <url>
+    <loc>https://khannay.com/posts/pytorch-ode/ode.html</loc>
+    <lastmod>2023-05-09T21:25:25.453Z</lastmod>
+  </url>
+  <url>
+    <loc>https://khannay.com/about.html</loc>
+    <lastmod>2023-05-09T21:25:26.009Z</lastmod>
+  </url>
+  <url>
+    <loc>https://khannay.com/index.html</loc>
+    <lastmod>2023-05-09T21:25:26.353Z</lastmod>
+  </url>
+  <url>
+    <loc>https://khannay.com/blog.html</loc>
+    <lastmod>2023-05-09T21:25:26.889Z</lastmod>
+  </url>
+  <url>
+    <loc>https://khannay.com/software.html</loc>
+    <lastmod>2023-05-09T21:25:30.133Z</lastmod>
   </url>
 </urlset>
