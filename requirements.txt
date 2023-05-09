@@ -1,2 +1,4 @@
 jupyter
 pyyaml
+torch 
+torchodeint 
